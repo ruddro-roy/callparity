@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://callparity.local/schemas/claim.schema.json",
+  "title": "Claim",
+  "type": "object",
+  "required": ["id", "ticket_id", "source_party", "predicate", "entity_ids", "polarity", "confidence"],
+  "additionalProperties": false,
+  "properties": {
+    "id": { "type": "string" },
+    "ticket_id": { "type": "string" },
+    "source_party": { "enum": ["A", "B"] },
+    "predicate": { "type": "string" },
+    "entity_ids": { "type": "array", "items": { "type": "string" } },
+    "slot": { "type": "object", "additionalProperties": true },
+    "polarity": { "enum": ["asserted", "denied", "unknown"] },
+    "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+    "evidence_span": { "type": "string" },
+    "call_run_id": { "type": "string" }
+  }
+}

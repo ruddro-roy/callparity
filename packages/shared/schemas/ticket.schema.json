@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://callparity.local/schemas/ticket.schema.json",
+  "title": "Ticket",
+  "type": "object",
+  "required": ["id", "domain", "fact", "entities", "parties"],
+  "additionalProperties": false,
+  "properties": {
+    "id": { "type": "string", "minLength": 1 },
+    "domain": { "type": "string" },
+    "fact": { "type": "string" },
+    "entities": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "parties": {
+      "type": "array",
+      "minItems": 2,
+      "items": {
+        "type": "object",
+        "required": ["role", "label", "phone_e164", "consent"],
+        "properties": {
+          "role": { "enum": ["A", "B"] },
+          "label": { "type": "string" },
+          "phone_e164": { "type": "string", "pattern": "^\\+[0-9]{8,15}$" },
+          "consent": { "type": "boolean" }
+        }
+      }
+    },
+    "sla_usd_per_hour": { "type": "number" }
+  }
+}

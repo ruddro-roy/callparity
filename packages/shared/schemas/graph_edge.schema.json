@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "GraphEdge",
+  "type": "object",
+  "required": ["hypothesis_id", "status"],
+  "properties": {
+    "hypothesis_id": { "type": "string" },
+    "status": { "enum": ["CONFIRMED", "CONTRADICTED", "UNTESTED", "UNREACHABLE", "ABSTAIN"] },
+    "a_span": { "type": "string" },
+    "b_span": { "type": "string" },
+    "action": { "enum": ["RESTAGE_AND_RECALL", "RELEASE_TRUCK", "HOLD_FOR_HUMAN", "REDIAL_A", "REDIAL_B"] }
+  }
+}
