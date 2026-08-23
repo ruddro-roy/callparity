@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from typing import Any
 
 import httpx
@@ -9,9 +10,24 @@ from app.ports.calle import CallTask, Plan, RunRef, RunView
 
 log = structlog.get_logger("calle.live")
 
+E164 = re.compile(r"^\+[1-9]\d{7,14}$")
+
+
+def require_e164_phones(phones: list[str] | None) -> list[str]:
+    """Refuse empty or non-E.164 destinations. Never invent a number."""
+    if not phones:
+        raise ValueError("empty to_phones: refuse live POST /v1/calls")
+    cleaned = [p.strip() for p in phones if p and str(p).strip()]
+    if not cleaned:
+        raise ValueError("empty to_phones: refuse live POST /v1/calls")
+    bad = [p for p in cleaned if not E164.match(p)]
+    if bad:
+        raise ValueError(f"to_phones must be E.164, got {bad!r}")
+    return cleaned
+
 
 class LiveCalleSdk:
-    """CALL-E Developer API adapter: plan_call -> run_call -> get_call_run.
+    """CALL-E Developer API adapter: plan_call → run_call → get_call_run.
 
     Maps to POST /v1/calls and GET /v1/calls/{call_id}. Requires CALLE_API_TOKEN.
     """
@@ -45,6 +61,9 @@ class LiveCalleSdk:
                 "CALLE_API_TOKEN is not set. Live calls require a CALL-E account token. "
                 "Set USE_FIXTURES=true or provide CALLE_API_TOKEN."
             )
+        phones: list[str] = []
+        if task.consent:
+            phones = require_e164_phones(task.to_phones)
         if not task.consent:
             return Plan(
                 plan_id=f"plan_{task.ticket_id}_{task.party_role}",
@@ -54,6 +73,7 @@ class LiveCalleSdk:
                 authorized=False,
                 goal=task.goal,
                 result_schema=task.result_schema,
+                to_phones=list(task.to_phones or []),
             )
         return Plan(
             plan_id=f"plan_{task.ticket_id}_{task.party_role}",
@@ -63,6 +83,7 @@ class LiveCalleSdk:
             authorized=True,
             goal=task.goal,
             result_schema=task.result_schema,
+            to_phones=phones,
         )
 
     def run(self, plan: Plan) -> RunRef:
@@ -70,8 +91,9 @@ class LiveCalleSdk:
             raise RuntimeError("CALLE_API_TOKEN is not set; refuse live run_call")
         if not plan.ready_to_run or not plan.authorized:
             raise PermissionError("plan is not authorized")
+        phones = require_e164_phones(plan.to_phones)
         body: dict[str, Any] = {
-            "to_phones": [],
+            "to_phones": phones,
             "goal": plan.goal,
             "result_schema": plan.result_schema,
             "ticket_id": plan.ticket_id,

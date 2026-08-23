@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from app.models.schemas import Claim
+from app.models.schemas import Claim, RefutationQuestion
 
 ABSTAIN_THRESHOLD = 0.45
 SPOKEN_TIME_BUDGET_S = 90
@@ -94,6 +94,7 @@ def candidate_observables(claim: Claim, all_live: list[Claim]) -> list[dict[str,
             }
         ],
     }
+    # Multi-cover observable used by greedy set-cover (arrival + staging).
     if claim.predicate == "pallet_staged":
         arrived = next((c for c in all_live if c.predicate == "driver_arrived"), None)
         if arrived:
@@ -136,6 +137,7 @@ def _greedy_set_cover(candidates: list[dict[str, Any]], live_ids: set[str], budg
             continue
         selected.append(best)
         remaining -= newly
+    # Fill leftover budget with unused high-gain observables (demo questions).
     leftover = [c for c in pool if c not in selected]
     leftover.sort(key=lambda c: c["net"], reverse=True)
     for cand in leftover:
@@ -167,6 +169,7 @@ def compile_refutation(ticket: dict, claims_a: list[Claim], disclosure_budget: i
     covered = {hid for s in selected for hid in s["covers"]}
     untested = [c.id for c in live if c.id not in covered]
     questions = [s["question"] for s in selected]
+    selected_models = [RefutationQuestion(**{k: s[k] for k in ("id", "question", "covers", "gain", "leak", "net") if k in s}) for s in selected]
     goal = "Ask only observable facts. Consent and recording disclosure first. " + " ".join(questions)
 
     if spoken_word_count(goal) > MAX_GOAL_WORDS:
@@ -191,7 +194,7 @@ def compile_refutation(ticket: dict, claims_a: list[Claim], disclosure_budget: i
         "to_phones": [party_b["phone_e164"]],
         "goal": goal,
         "result_schema": result_schema,
-        "selected_questions": selected,
+        "selected_questions": [q.model_dump() for q in selected_models],
         "abstain": abstain,
         "untested": untested,
     }

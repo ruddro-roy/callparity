@@ -4,7 +4,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 class PartyRole(str, Enum):
@@ -64,7 +64,25 @@ class Claim(BaseModel):
     polarity: Polarity = Polarity.asserted
     confidence: float = 0.0
     evidence_span: str = ""
+    evidence: dict[str, str] | None = None
     call_run_id: str = ""
+
+    @model_validator(mode="after")
+    def _quote_evidence(self) -> "Claim":
+        if self.evidence is None and self.evidence_span:
+            object.__setattr__(self, "evidence", {"quote": self.evidence_span})
+        elif self.evidence and self.evidence.get("quote") and not self.evidence_span:
+            object.__setattr__(self, "evidence_span", self.evidence["quote"])
+        return self
+
+
+class RefutationQuestion(BaseModel):
+    id: str
+    question: str
+    covers: list[str] = Field(default_factory=list)
+    gain: float = 0.0
+    leak: float = 0.0
+    net: float = 0.0
 
 
 class GraphEdge(BaseModel):

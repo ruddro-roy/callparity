@@ -22,6 +22,7 @@ class Plan(BaseModel):
     authorized: bool
     goal: str
     result_schema: dict[str, Any] = Field(default_factory=dict)
+    to_phones: list[str] = Field(default_factory=list)
 
 
 class RunRef(BaseModel):

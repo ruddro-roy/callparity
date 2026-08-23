@@ -15,6 +15,11 @@
     "polarity": { "enum": ["asserted", "denied", "unknown"] },
     "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
     "evidence_span": { "type": "string" },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": { "quote": { "type": "string" } }
+    },
     "call_run_id": { "type": "string" }
   }
 }
