@@ -1,0 +1,67 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: callparity
+      POSTGRES_PASSWORD: callparity
+      POSTGRES_DB: callparity
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U callparity -d callparity"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  redis:
+    image: redis:7-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+    ports:
+      - "6379:6379"
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    environment:
+      DATABASE_URL: postgresql+psycopg2://callparity:callparity@postgres:5432/callparity
+      REDIS_URL: redis://redis:6379/0
+      USE_FIXTURES: "true"
+      CALLE_BASE_URL: http://fixtures:8080
+      REDIS_OPTIONAL: "false"
+      SEED_ON_STARTUP: "true"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/healthz')"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    ports:
+      - "8000:8000"
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    environment:
+      API_URL: http://api:8000
+      NEXT_PUBLIC_API_URL: ""
+      VITE_PUBLIC_API_URL: ""
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "3000:3000"
+
+volumes:
+  pgdata:
