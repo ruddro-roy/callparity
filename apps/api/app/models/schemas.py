@@ -1,0 +1,110 @@
+from __future__ import annotations
+
+from datetime import datetime
+from enum import Enum
+from typing import Any
+
+from pydantic import BaseModel, Field
+
+
+class PartyRole(str, Enum):
+    A = "A"
+    B = "B"
+
+
+class Polarity(str, Enum):
+    asserted = "asserted"
+    denied = "denied"
+    unknown = "unknown"
+
+
+class EdgeStatus(str, Enum):
+    CONFIRMED = "CONFIRMED"
+    CONTRADICTED = "CONTRADICTED"
+    UNTESTED = "UNTESTED"
+    UNREACHABLE = "UNREACHABLE"
+    ABSTAIN = "ABSTAIN"
+
+
+class ActionKind(str, Enum):
+    RESTAGE_AND_RECALL = "RESTAGE_AND_RECALL"
+    RELEASE_TRUCK = "RELEASE_TRUCK"
+    HOLD_FOR_HUMAN = "HOLD_FOR_HUMAN"
+    REDIAL_A = "REDIAL_A"
+    REDIAL_B = "REDIAL_B"
+
+
+class Party(BaseModel):
+    role: PartyRole
+    label: str
+    phone_e164: str
+    consent: bool = False
+
+
+class Ticket(BaseModel):
+    id: str
+    domain: str
+    fact: str
+    entities: dict[str, Any] = Field(default_factory=dict)
+    parties: list[Party]
+    sla_usd_per_hour: float = 0
+
+
+class TicketCreate(Ticket):
+    pass
+
+
+class Claim(BaseModel):
+    id: str
+    ticket_id: str
+    source_party: PartyRole
+    predicate: str
+    entity_ids: list[str] = Field(default_factory=list)
+    slot: dict[str, Any] = Field(default_factory=dict)
+    polarity: Polarity = Polarity.asserted
+    confidence: float = 0.0
+    evidence_span: str = ""
+    call_run_id: str = ""
+
+
+class GraphEdge(BaseModel):
+    hypothesis_id: str
+    status: EdgeStatus
+    a_span: str = ""
+    b_span: str = ""
+    action: ActionKind | None = None
+    predicate: str = ""
+
+
+class ActionCard(BaseModel):
+    action: ActionKind
+    ticket_id: str
+    rationale: str
+    edges: list[GraphEdge] = Field(default_factory=list)
+    created_at: datetime | None = None
+
+
+class JobStatus(str, Enum):
+    queued = "queued"
+    running = "running"
+    completed = "completed"
+    failed = "failed"
+    cancelled = "cancelled"
+
+
+class Job(BaseModel):
+    id: str
+    ticket_id: str
+    status: JobStatus
+    idempotency_key: str
+    result: dict[str, Any] | None = None
+    error: str | None = None
+    phase: str = "queued"
+    telemetry: dict[str, Any] = Field(default_factory=dict)
+
+
+class Healthz(BaseModel):
+    status: str
+    postgres: str
+    redis: str
+    calle: str
