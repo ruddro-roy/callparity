@@ -73,7 +73,7 @@ The planner also generates the naive recap a follow-up bot would ask ("Can you c
 
 **Idea (tie-break 2).** Cross-call refutation: hypotheses from A, minimum observable questions for B, disclosure budget, structural leak check. The second call is a test of the first. Merged into awesome-phone-call-agents as [#220](https://github.com/CALLE-AI/awesome-phone-call-agents/pull/220).
 
-**Implementation (tie-break 3).** FastAPI, Pydantic, fixture + live adapters behind one port, mocked wire-format tests for POST /v1/calls, HMAC-optional webhook (fail closed), authorization-based idempotency, structured JSON logs, SSE phases, 49 tests across planner, merger, idempotency, webhook, live adapter, skill, and the e2e demo loop (the compose smoke skips when the stack is down).
+**Implementation (tie-break 3).** FastAPI, Pydantic, fixture + live adapters behind one port, mocked wire-format tests for POST /v1/calls, HMAC-optional webhook (fail closed), authorization-based idempotency, structured JSON logs, SSE phases, 70 tests across planner, merger, idempotency, webhook, live adapter, operator script, skill, and the e2e demo loop (the compose smoke skips when the stack is down).
 
 **Demo (tie-break 4).** One screen: A claims, refute plan with the dropped leak, B claims, action card, merged graph. DEMO_SCRIPT.md walks it in 90 seconds. Fixtures so a busy signal cannot kill the punchline.
 
@@ -81,9 +81,26 @@ The planner also generates the naive recap a follow-up bot would ask ("Can you c
 
 The live adapter has placed one real CALL-E call: `call_id 855acdb09cbb4b62a3c95c51988727b8`, a public restaurant-hours IVR check. The numbers used were released afterward. That call proves the adapter, token, and polling path work against the real API. It is not an FR-1842 parity run; no live two-party FR-1842 call has happened.
 
+## Place one live hours call (operator path)
+
+`scripts/live_hours_call.py` places one outbound call that asks a public business for its hours of operation. It is a separate operator path. FR-1842 / FR-1900 / FR-1888 stay fixtures, and compose stays `USE_FIXTURES=true`, so judges never need live keys.
+
+Secrets and the destination live only in the shell environment. Never commit a token or a phone number. `.env` is gitignored and the seeds use fictional +1555 numbers.
+
+    export CALLE_BASE_URL=      # your CALL-E workspace API base URL
+    export CALLE_API_TOKEN=     # token from that workspace
+    export CALLE_LIVE_TO_PHONE= # destination in E.164: + then 8 to 15 digits
+    export CALLE_CONSENT=yes    # confirms the callee may be dialed and recorded
+    python scripts/live_hours_call.py
+
+The script refuses to dial when a variable is missing, when the phone is not E.164, or when consent is not `yes`. It exits 2 and names the variable to fix. On success stdout carries only two kinds of lines, `call_id <id>` and `status <status>`. Adapter logs go to stderr with the destination masked, and the token is never printed.
+
+The workspace's default outbound number places the call. Renting or assigning a dedicated from-number is an operator step in the CALL-E workspace, outside this repo. The POST body carries no `from_number` field because the pinned wire format (SPECIFICATION.md, `tests/test_live_adapter.py`) does not define one, so a `CALLE_FROM_NUMBER` variable would be dead config and is not read.
+
 ## Safety
 
 - No call without stored consent on that party (403 otherwise).
+- The hours script refuses to dial without CALLE_CONSENT=yes, and its errors never echo the destination or the token.
 - Preview is the default path when live keys are missing; USE_FIXTURES=true never dials.
 - E.164 values are masked in logs and in the workbench (+1555***0001).
 - Structured logging only (structlog JSON). No raw print in the API.
@@ -104,12 +121,14 @@ Rules: consent and recording disclosure on every live call; masked fictional num
 
 ### Remaining blockers for a live FR-1842 run (account/consent, not code)
 
+The hours call above needs only a token, a base URL, a destination, and consent. A live two-party FR-1842 parity run also needs:
+
 1. USE_FIXTURES=false, CALLE_BASE_URL, and CALLE_API_TOKEN in .env.
 2. Public HTTPS webhook URL plus CALLE_WEBHOOK_SECRET shared with CALL-E.
 3. Real E.164 numbers with stored consent on both parties (seeds use +1555 fictionals).
 4. Carrier / workspace credits and a from-number allocated on the CALL-E side.
 
-Until those exist, ship and demo on fixtures. The live adapter raises if the token is missing.
+Until those exist, ship and demo on fixtures. The live adapter refuses to plan, run, or poll while CALLE_API_TOKEN or CALLE_BASE_URL is missing, and names the variable to set.
 
 ## Layout
 
@@ -117,6 +136,7 @@ Until those exist, ship and demo on fixtures. The live adapter raises if the tok
     apps/api                     FastAPI engine
     packages/shared              JSON Schema
     scripts/seed_demo_data.py
+    scripts/live_hours_call.py   One live hours-of-operation call (operator path)
     skills/callparity-claimkill  Skill merged upstream as #220, mirrored byte-identical
     demo/                        Workbench screenshot
     DEMO_SCRIPT.md PITCH_DECK.md SUBMISSION_TEXT.md
