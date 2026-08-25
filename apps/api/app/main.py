@@ -21,10 +21,8 @@ def _maybe_seed() -> None:
         empty = session.query(TicketRow).count() == 0
     if not empty:
         return
-    candidates = [
-        Path("/app/scripts"),
-        Path(__file__).resolve().parents[3] / "scripts",
-        Path(__file__).resolve().parents[2] / "scripts",
+    candidates = [Path("/app/scripts")] + [
+        parent / "scripts" for parent in Path(__file__).resolve().parents
     ]
     for scripts in candidates:
         if (scripts / "seed_demo_data.py").exists():
