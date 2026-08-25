@@ -29,11 +29,11 @@ def redact_phones(text: str) -> str:
 
 
 def require_e164_phones(phones: list[str] | None) -> list[str]:
-    """Refuse empty or non-E.164 destinations. Never invent or echo a number."""
+    """Refuse empty or non-E.164 destinations. Never invent, drop, or echo a number."""
     if not phones:
         raise ValueError("empty to_phones: refuse live POST /v1/calls")
-    cleaned = [p.strip() for p in phones if p and str(p).strip()]
-    if not cleaned:
+    cleaned = [(p or "").strip() for p in phones]
+    if not any(cleaned):
         raise ValueError("empty to_phones: refuse live POST /v1/calls")
     bad = [i for i, p in enumerate(cleaned) if not E164.match(p)]
     if bad:
