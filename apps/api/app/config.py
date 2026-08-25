@@ -1,6 +1,9 @@
 from functools import lru_cache
+from typing import Literal
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+CalleMode = Literal["fixture", "live"]
 
 
 class Settings(BaseSettings):
@@ -15,6 +18,10 @@ class Settings(BaseSettings):
     seed_on_startup: bool = True
     calle_api_token: str = ""
     calle_webhook_secret: str = ""
+
+    @property
+    def calle_mode(self) -> CalleMode:
+        return "fixture" if self.use_fixtures else "live"
 
 
 @lru_cache

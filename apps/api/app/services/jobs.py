@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import asyncio
-import os
 import time
 import uuid
 from typing import Any
@@ -63,7 +62,7 @@ def enqueue_parity(
         status=JobStatus.queued.value,
         idempotency_key=key,
         phase="queued",
-        telemetry={"mode": "fixture" if get_settings().use_fixtures else "live"},
+        telemetry={"mode": get_settings().calle_mode},
     )
     session.add(row)
     session.flush()
@@ -104,7 +103,7 @@ def _execute_job(job_id: str, ticket_id: str) -> None:
         if row:
             tel = dict(row.telemetry or {})
             tel["latency_ms"] = elapsed_ms
-            tel["mode"] = "fixture" if get_settings().use_fixtures else "live"
+            tel["mode"] = get_settings().calle_mode
             if job.result:
                 tel["claims_a"] = len(job.result.get("claims_a") or [])
                 tel["claims_b"] = len(job.result.get("claims_b") or [])
@@ -125,11 +124,3 @@ def _execute_job(job_id: str, ticket_id: str) -> None:
             publish(ticket_id, {"type": "job_failed", "job_id": job_id, "error": str(exc)})
     finally:
         session.close()
-
-
-def playback_delay() -> float:
-    raw = os.environ.get("PLAYBACK_DELAY_MS", "180")
-    try:
-        return max(0.0, float(raw) / 1000.0)
-    except ValueError:
-        return 0.18

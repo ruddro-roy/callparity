@@ -25,7 +25,7 @@ A small monorepo: FastAPI engine, Vite/React workbench, Postgres plus Redis, and
 
 The reusable piece is ClaimKill, merged into the community list as CALLE-AI/awesome-phone-call-agents#220 (https://github.com/CALLE-AI/awesome-phone-call-agents/pull/220): a standalone leak-drop planner with fixtures and twelve regression tests, mirrored byte-identical in this repo under skills/callparity-claimkill.
 
-The live adapter has placed one real CALL-E call: call_id 855acdb09cbb4b62a3c95c51988727b8, a public restaurant-hours IVR check whose numbers were released afterward. That call proves the adapter, token, and polling path against the real API. It is not an FR-1842 parity run, and we do not claim a live two-party run happened.
+The live proof is one real human conversation: call_Sv3d5Dt3jj0YabV9IJZh7g (provider_call_id 504d94e961ec48578060a4ea7844a4f6), placed to a public diner, Tom's Restaurant. A person answered. The transcript beat: bot Hello / person Hello / bot What time do you close today / person Yeah. 11. / bot Thank you, bye. The structured result: reached=human, spoke_with_human=yes, closing_time=11. It is not an FR-1842 parity run, and we do not claim a live two-party run happened.
 
 ## Challenges we ran into
 
@@ -33,7 +33,7 @@ Keeping the second call from becoming a leaky recap of the first. A token blackl
 
 ## Accomplishments that we're proud of
 
-A judge can run one compose command, click Preview, then Run parity, and read the whole loop on one screen: Party A claims with quoted spans, the refutation plan with its dropped leak, Party B claims, the graph (pallet_staged CONTRADICTED, driver_arrived CONFIRMED, seal UNTESTED), and the RESTAGE_AND_RECALL card. The control ticket releases the truck; the voicemail ticket holds for a human. 49 tests cover the planner, merger, idempotency, webhook, live adapter wire format, the merged skill, and the e2e demo loop. The skill is merged upstream, not pending.
+A judge can run one compose command, click Preview, then Run parity, and read the whole loop on one screen: Party A claims with quoted spans, the refutation plan with its dropped leak, Party B claims, the graph (pallet_staged CONTRADICTED, driver_arrived CONFIRMED, seal UNTESTED), and the RESTAGE_AND_RECALL card. The control ticket releases the truck; the voicemail ticket holds for a human. 73 tests cover the planner, merger, idempotency, webhook, live adapter wire format, the operator script, the merged skill, and the e2e demo loop. The skill is merged upstream, not pending.
 
 ## What's next
 
