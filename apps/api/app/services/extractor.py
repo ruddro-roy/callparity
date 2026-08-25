@@ -107,7 +107,8 @@ def span(transcript: str, needles: tuple[str, ...]) -> str:
                 if space > idx:
                     end = space
             return transcript[start:end].strip()
-    return transcript[:80]
+    # No needle spoken: no quote. An invented span would fake evidence.
+    return ""
 
 
 def _from_raw(ticket_id: str, role: PartyRole, run: RunView, raw: dict) -> Claim:

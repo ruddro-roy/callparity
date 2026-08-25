@@ -69,7 +69,7 @@ function ClaimCard({ claim }) {
       </div>
       <p className="mt-1 text-sm text-slate-400">confidence {Number(claim.confidence).toFixed(2)}</p>
       {claim.evidence_span && (
-        <p className="mt-2 text-base leading-snug text-slate-200">&ldquo;{claim.evidence_span}&rdquo;</p>
+        <p className="mt-2 text-base leading-snug text-slate-200">&quot;{claim.evidence_span}&quot;</p>
       )}
     </li>
   );
@@ -86,13 +86,13 @@ function EdgeRow({ edge }) {
         {edge.a_span && (
           <p className="text-base leading-snug">
             <span className="mr-2 font-semibold text-slate-300">A</span>
-            &ldquo;{edge.a_span}&rdquo;
+            &quot;{edge.a_span}&quot;
           </p>
         )}
         {edge.b_span && (
           <p className="text-base leading-snug">
             <span className="mr-2 font-semibold text-slate-300">B</span>
-            &ldquo;{edge.b_span}&rdquo;
+            &quot;{edge.b_span}&quot;
           </p>
         )}
       </div>
