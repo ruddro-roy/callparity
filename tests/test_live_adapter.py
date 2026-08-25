@@ -33,6 +33,13 @@ def test_require_e164_refuses_empty():
     assert require_e164_phones(["+15550100002"]) == ["+15550100002"]
 
 
+def test_require_e164_refuses_mixed_empty_entries():
+    with pytest.raises(ValueError, match=r"positions \[1\]"):
+        require_e164_phones(["+15550100002", ""])
+    with pytest.raises(ValueError, match=r"positions \[1\]"):
+        require_e164_phones(["+15550100002", "   "])
+
+
 def test_live_plan_and_run_refuse_empty_phones():
     sdk = LiveCalleSdk("https://example.invalid", token="tok")
     with pytest.raises(ValueError, match="empty to_phones"):
