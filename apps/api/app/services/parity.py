@@ -206,7 +206,10 @@ def run_parity_loop(
     result = {
         "graph": [e.model_dump(mode="json") for e in edges],
         "action": card.model_dump(mode="json"),
-        "plan_b": {k: compiled[k] for k in ("goal", "selected_questions", "abstain", "untested")},
+        "plan_b": {
+            k: compiled[k]
+            for k in ("goal", "selected_questions", "dropped_questions", "abstain", "untested")
+        },
         "transcript_pointers": {"a": ptr_a, "b": ptr_b},
         "spans": {
             "a": [c.evidence_span for c in claims_a],
