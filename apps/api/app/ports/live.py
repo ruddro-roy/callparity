@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import re
 from typing import Any
 
@@ -43,12 +44,19 @@ def require_e164_phones(phones: list[str] | None) -> list[str]:
     return cleaned
 
 
-class LiveCalleSdk:
-    """CALL-E Developer API adapter: plan_call -> run_call -> get_call_run.
+def default_idempotency_key(plan: Plan, phones: list[str]) -> str:
+    """Stable per authorization: same plan content retries as the same call."""
+    digest = hashlib.sha256("|".join([plan.goal, *sorted(phones)]).encode("utf-8")).hexdigest()
+    return f"{plan.plan_id}-{digest[:12]}"
 
-    Maps to POST /v1/calls and GET /v1/calls/{call_id}. Fails closed: a missing
-    CALLE_API_TOKEN or CALLE_BASE_URL, a non-E.164 destination, or an
-    unauthorized plan means no request leaves the process.
+
+class LiveCalleSdk:
+    """CALL-E Calls API adapter (docs.heycall-e.com/calls).
+
+    POST /v1/calls sends task, recipients[].phones, result_schema, and metadata
+    with an Idempotency-Key header; GET /v1/calls/{call_id} reads the state.
+    Fails closed: a missing CALLE_API_TOKEN or CALLE_BASE_URL, a non-E.164
+    destination, or an unauthorized plan means no request leaves the process.
     Tests inject an httpx transport; production uses the default network one.
     """
 
@@ -89,11 +97,15 @@ class LiveCalleSdk:
         path: str,
         timeout: httpx.Timeout,
         json_body: dict[str, Any] | None = None,
+        extra_headers: dict[str, str] | None = None,
     ) -> dict[str, Any]:
+        headers = self._headers()
+        if extra_headers:
+            headers.update(extra_headers)
         try:
             with httpx.Client(timeout=timeout, transport=self._transport) as client:
                 resp = client.request(
-                    method, f"{self.base_url}{path}", json=json_body, headers=self._headers()
+                    method, f"{self.base_url}{path}", json=json_body, headers=headers
                 )
         except httpx.TimeoutException as exc:
             raise CalleApiError(
@@ -128,13 +140,12 @@ class LiveCalleSdk:
         return f"CALL-E rejected the request (HTTP {status}) on {where}: {detail}"
 
     def ping(self) -> bool:
+        # GET on the collection is 405 on the real API, so any response
+        # below 500 proves the service is reachable.
         if not self.base_url:
             return False
         try:
             with httpx.Client(timeout=3.0, transport=self._transport) as client:
-                resp = client.get(f"{self.base_url}/healthz", headers=self._headers())
-                if resp.status_code < 500:
-                    return True
                 resp = client.get(f"{self.base_url}/v1/calls", headers=self._headers())
                 return resp.status_code < 500
         except httpx.HTTPError:
@@ -164,22 +175,24 @@ class LiveCalleSdk:
             to_phones=require_e164_phones(task.to_phones),
         )
 
-    def run(self, plan: Plan) -> RunRef:
+    def run(self, plan: Plan, idempotency_key: str | None = None) -> RunRef:
         self._require_config()
         if not plan.ready_to_run or not plan.authorized:
             raise PermissionError(
-                "plan is not authorized: without consent_disclosed there is no POST /v1/calls"
+                "plan is not authorized: consent was not disclosed, so no POST /v1/calls"
             )
         phones = require_e164_phones(plan.to_phones)
-        # The pinned wire format (SPECIFICATION.md, mocked tests) has no
-        # from_number field; the workspace's outbound number places the call.
+        # The Calls API has no from_number request field; the workspace's
+        # default outbound number places the call.
         body: dict[str, Any] = {
-            "to_phones": phones,
-            "goal": plan.goal,
+            "task": plan.goal,
+            "recipients": [{"phones": phones}],
             "result_schema": plan.result_schema,
-            "ticket_id": plan.ticket_id,
-            "party_role": plan.party_role,
-            "consent_disclosed": True,
+            "metadata": {
+                "ticket_id": plan.ticket_id,
+                "party_role": plan.party_role,
+                "consent_disclosed": True,
+            },
         }
         log.info(
             "calle_run_call",
@@ -188,8 +201,16 @@ class LiveCalleSdk:
             plan_id=plan.plan_id,
             to=[mask_e164(p) for p in phones],
         )
-        data = self._request("POST", "/v1/calls", _RUN_TIMEOUT, json_body=body)
-        call_id = data.get("id") or data.get("call_id") or data.get("run_id")
+        data = self._request(
+            "POST",
+            "/v1/calls",
+            _RUN_TIMEOUT,
+            json_body=body,
+            extra_headers={
+                "Idempotency-Key": idempotency_key or default_idempotency_key(plan, phones)
+            },
+        )
+        call_id = data.get("id")
         if not call_id:
             raise CalleApiError("CALL-E POST /v1/calls returned no call id")
         return RunRef(run_id=str(call_id), plan_id=plan.plan_id)
@@ -200,7 +221,7 @@ class LiveCalleSdk:
         return RunView(
             run_id=run.run_id,
             status=str(data.get("status") or "unknown"),
-            structured_result=data.get("structured_result") or data.get("result") or {},
+            structured_result=data.get("structured_result") or {},
             transcript=data.get("transcript") or "",
             summary=data.get("summary") or "",
         )

@@ -77,8 +77,9 @@ def test_places_call_and_prints_only_call_id_and_status(capsys):
         if request.method == "POST":
             seen["path"] = request.url.path
             seen["auth"] = request.headers.get("Authorization")
+            seen["idempotency_key"] = request.headers.get("Idempotency-Key")
             seen["body"] = json.loads(request.content.decode())
-            return httpx.Response(200, json={"id": "call_live_1", "status": "queued"})
+            return httpx.Response(201, json={"id": "call_live_1", "status": "queued"})
         polls["n"] += 1
         status = "queued" if polls["n"] == 1 else "completed"
         return httpx.Response(200, json={"id": "call_live_1", "status": status})
@@ -94,9 +95,10 @@ def test_places_call_and_prints_only_call_id_and_status(capsys):
     assert "+1555***0002" in err
     assert seen["path"] == "/v1/calls"
     assert seen["auth"] == "Bearer test-token"
-    assert seen["body"]["to_phones"] == [PHONE]
-    assert seen["body"]["consent_disclosed"] is True
-    assert "hours of operation" in seen["body"]["goal"]
+    assert seen["idempotency_key"].startswith("live-hours-")
+    assert seen["body"]["recipients"] == [{"phones": [PHONE]}]
+    assert seen["body"]["metadata"]["consent_disclosed"] is True
+    assert "hours of operation" in seen["body"]["task"]
 
 
 def test_api_rejection_stays_secret_free(capsys):

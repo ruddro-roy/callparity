@@ -11,6 +11,7 @@ from __future__ import annotations
 import os
 import sys
 import time
+import uuid
 from pathlib import Path
 from typing import Mapping
 
@@ -87,7 +88,9 @@ def main(
         consent=True,
     )
     try:
-        run = sdk.run(sdk.plan(task))
+        # A rerun of the script is a new operation, not a retry, so each
+        # invocation gets its own Idempotency-Key.
+        run = sdk.run(sdk.plan(task), idempotency_key=f"live-hours-{uuid.uuid4().hex[:12]}")
     except (RuntimeError, ValueError, PermissionError) as exc:
         print(f"call failed: {exc}", file=sys.stderr)
         return 1
