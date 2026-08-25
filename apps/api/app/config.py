@@ -9,7 +9,7 @@ class Settings(BaseSettings):
     database_url: str = "sqlite+pysqlite:///./callparity.db"
     redis_url: str = "redis://localhost:6379/0"
     use_fixtures: bool = True
-    calle_base_url: str = "http://fixtures:8080"
+    calle_base_url: str = ""
     log_level: str = "INFO"
     redis_optional: bool = False
     seed_on_startup: bool = True
