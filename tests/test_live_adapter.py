@@ -102,6 +102,60 @@ def test_run_posts_v1_calls_with_bearer_token():
     }
 
 
+FORBIDDEN_WIRE_FIELDS = {"to_phones", "goal", "from_number"}
+
+
+def json_keys(node):
+    """Yield every dict key in the tree, at any depth."""
+    if isinstance(node, dict):
+        for key, value in node.items():
+            yield key
+            yield from json_keys(value)
+    elif isinstance(node, list):
+        for item in node:
+            yield from json_keys(item)
+
+
+def test_json_keys_sees_nested_keys():
+    assert "goal" in set(json_keys({"metadata": [{"goal": "x"}]}))
+
+
+def test_post_body_is_official_shape_only():
+    """No network: the wire body is exactly task/recipients/result_schema/metadata,
+    and to_phones, goal, and from_number appear nowhere in it."""
+    seen: dict = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen["idempotency_key"] = request.headers.get("Idempotency-Key")
+        seen["body"] = json.loads(request.content.decode())
+        return httpx.Response(201, json={"id": "call_mock_123"})
+
+    sdk = LiveCalleSdk(
+        "https://api.call-e.invalid",
+        token="tok",
+        transport=httpx.MockTransport(handler),
+    )
+    plan = sdk.plan(
+        CallTask(
+            ticket_id="FR-1842",
+            party_role="B",
+            to_phones=["+15550100002"],
+            goal="Ask observable dock facts only.",
+            result_schema={
+                "type": "object",
+                "properties": {"arrived": {"type": "boolean"}},
+            },
+            consent=True,
+        )
+    )
+    sdk.run(plan)
+    body = seen["body"]
+    assert set(body) == {"task", "recipients", "result_schema", "metadata"}
+    assert body["recipients"] == [{"phones": ["+15550100002"]}]
+    assert seen["idempotency_key"]
+    assert not FORBIDDEN_WIRE_FIELDS.intersection(json_keys(body))
+
+
 def test_idempotency_key_stable_per_plan_content():
     keys: list[str] = []
 
