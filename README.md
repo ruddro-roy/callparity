@@ -6,11 +6,13 @@ CallParity turns a two-sided ops ticket into a test. It places (or fixtures) a C
 
 The seed that judges see: ticket **FR-1842**, pallet **PL-9F21**, $18,000/hour cold-chain SLA. Warehouse says Dock 3. Driver says Dock 3 was empty.
 
+![CallParity workbench after the FR-1842 fixture run](demo/workbench-fr1842.png)
+
 ## Value proposition
 
 Existing phone-agent skills confirm one recipient or schedule one event. They do not compile a second call as a falsification test of the first. Dispatchers stare at two spoken truths and an email thread. CallParity emits one action card (RESTAGE_AND_RECALL, RELEASE_TRUCK, or HOLD_FOR_HUMAN) with quoted transcript spans on every edge.
 
-Same loop for freight, prior-auth, construction materials, or insurance supplements. The reusable piece is the skill: `skills/callparity-refute`.
+Same loop for freight, prior-auth, construction materials, or insurance supplements. The reusable piece is the ClaimKill skill, merged into the community list as [CALLE-AI/awesome-phone-call-agents#220](https://github.com/CALLE-AI/awesome-phone-call-agents/pull/220) and mirrored byte-identical in `skills/callparity-claimkill`.
 
 ## Quickstart (compose)
 
@@ -38,7 +40,7 @@ If Docker is not installed, use the local path below.
     uvicorn app.main:app --app-dir apps/api --host 127.0.0.1 --port 8000
     pytest -q
 
-Vite in apps/web proxies /v1 to 127.0.0.1:8000. Seed is idempotent.
+Vite in apps/web proxies /v1 to 127.0.0.1:8000 (`npm install && npm run dev`). Seed is idempotent.
 
 ## Architecture
 
@@ -52,25 +54,40 @@ Vite in apps/web proxies /v1 to 127.0.0.1:8000. Seed is idempotent.
                                           | GraphMerger
                                           + ActionCard + SSE
 
-CallePort adapters: FixtureCalle when USE_FIXTURES=true; LiveCalleSdk when false (POST /v1/calls, GET /v1/calls/{id}). UI, planner, and tests never branch on the toggle except a fixture banner. GET /healthz checks Postgres, Redis, and CallePort.ping. Compose uses service DNS; no localhost inside containers.
+CallePort adapters: FixtureCalle when USE_FIXTURES=true; LiveCalleSdk when false (POST /v1/calls, GET /v1/calls/{id}). UI, planner, and tests never branch on the toggle except a fixture banner. GET /healthz checks Postgres, Redis, and CallePort.ping, and reports the mode. Compose uses service DNS; no localhost inside containers.
+
+## The leak check is structural, not a token list
+
+The planner never forwards Party A's accusation. A candidate question for Party B is dropped when B could recover what A asserted from it:
+
+- **attribution**: reported speech of a recap subject ("the warehouse said", "according to...").
+- **asserted_value**: it names a slot value that exists only because A said it (dock 3, 06:40), or repeats three or more consecutive words of A's quoted span.
+- **polar_hypothesis**: yes/no framing of a contested predicate ("Was the pallet staged?"). Questions about B's own perception ("Did you see PL-9F21 on a jack?") stay.
+- **blame / clinical**: second-person fault language, or cargo labels drifting into patient content.
+
+The planner also generates the naive recap a follow-up bot would ask ("Can you confirm PL-9F21 pallet staged at dock 3 and at 06:40?") and shows it dropped in the workbench, with reasons. `tests/test_planner.py` proves the recap always drops, the golden observables always survive, a ticket without its critical entity id refuses to plan, and voicemail never confirms.
 
 ## How this hits each judging criterion
 
 **Impact (tie-break 1).** Specific $18k/hour cold-chain miss, not an abstract caller. Ops gets a restage/recall card with quoted words. FR-1900 proves the same machinery can release a truck when both sides agree.
 
-**Idea (tie-break 2).** Cross-call refutation planner: hypotheses from A, minimum observable questions for B, disclosure budget. The second call is a test of the first. Not on the awesome-phone-call-agents list.
+**Idea (tie-break 2).** Cross-call refutation: hypotheses from A, minimum observable questions for B, disclosure budget, structural leak check. The second call is a test of the first. Merged into awesome-phone-call-agents as [#220](https://github.com/CALLE-AI/awesome-phone-call-agents/pull/220).
 
-**Implementation (tie-break 3).** FastAPI, Pydantic, fixture + live adapters behind one port, HMAC-optional webhook (fail closed), authorization-based idempotency, structured JSON logs, SSE phases, pytest unit + integration + e2e demo loop.
+**Implementation (tie-break 3).** FastAPI, Pydantic, fixture + live adapters behind one port, mocked wire-format tests for POST /v1/calls, HMAC-optional webhook (fail closed), authorization-based idempotency, structured JSON logs, SSE phases, 49 tests across planner, merger, idempotency, webhook, live adapter, skill, and the e2e demo loop (the compose smoke skips when the stack is down).
 
-**Demo (tie-break 4).** DEMO_SCRIPT.md is 90 seconds. Preview then Run parity. Fixtures so a busy signal cannot kill the punchline.
+**Demo (tie-break 4).** One screen: A claims, refute plan with the dropped leak, B claims, action card, merged graph. DEMO_SCRIPT.md walks it in 90 seconds. Fixtures so a busy signal cannot kill the punchline.
+
+## Live CALL-E proof
+
+The live adapter has placed one real CALL-E call: `call_id 855acdb09cbb4b62a3c95c51988727b8`, a public restaurant-hours IVR check. The numbers used were released afterward. That call proves the adapter, token, and polling path work against the real API. It is not an FR-1842 parity run; no live two-party FR-1842 call has happened.
 
 ## Safety
 
 - No call without stored consent on that party (403 otherwise).
 - Preview is the default path when live keys are missing; USE_FIXTURES=true never dials.
-- E.164 values are masked in logs (+1555***0001).
+- E.164 values are masked in logs and in the workbench (+1555***0001).
 - Structured logging only (structlog JSON). No raw print in the API.
-- Insulin is a cargo SKU, not a patient conversation. The planner refuses leaky phrasing.
+- Insulin is a cargo SKU, not a patient conversation. The leak check refuses clinical drift.
 - If CALLE_WEBHOOK_SECRET is set, missing or wrong HMAC is 401.
 - POST /v1/jobs/{id}/cancel is honored before run_call.
 - Unknown, voicemail, and low-confidence extraction never confirm.
@@ -81,27 +98,27 @@ CallParity invokes the runtime (or a fixture that implements the same port):
 
     plan_call -> run_call -> get_call_run
 
-Developer API used by LiveCalleSdk: POST /v1/calls, GET /v1/calls/{call_id}, events poll, POST /v1/webhooks/calle.
+Developer API used by LiveCalleSdk: POST /v1/calls, GET /v1/calls/{call_id}, events poll, POST /v1/webhooks/calle. The wire format is pinned by mocked-transport tests in `tests/test_live_adapter.py`; CI never dials.
 
 Rules: consent and recording disclosure on every live call; masked fictional numbers in seeds; dry-run and fixture mode by default; fail-closed dispositions; host owns scheduling, CALL-E owns one-shot calls.
 
-### Remaining blockers for a real live call (account/token, not code)
+### Remaining blockers for a live FR-1842 run (account/consent, not code)
 
-1. A CALL-E developer account and CALLE_API_TOKEN (Bearer).
-2. USE_FIXTURES=false and a reachable CALLE_BASE_URL (not the fixture hostname).
-3. Public HTTPS webhook URL plus CALLE_WEBHOOK_SECRET shared with CALL-E.
-4. Real E.164 numbers with stored consent (seeds use +1555 fictionals).
-5. Carrier / workspace credits and a from-number allocated on the CALL-E side.
+1. USE_FIXTURES=false, CALLE_BASE_URL, and CALLE_API_TOKEN in .env.
+2. Public HTTPS webhook URL plus CALLE_WEBHOOK_SECRET shared with CALL-E.
+3. Real E.164 numbers with stored consent on both parties (seeds use +1555 fictionals).
+4. Carrier / workspace credits and a from-number allocated on the CALL-E side.
 
 Until those exist, ship and demo on fixtures. The live adapter raises if the token is missing.
 
 ## Layout
 
-    apps/web                   Vite + React + Tailwind workbench
-    apps/api                   FastAPI engine
-    packages/shared            JSON Schema
+    apps/web                     Vite + React + Tailwind workbench
+    apps/api                     FastAPI engine
+    packages/shared              JSON Schema
     scripts/seed_demo_data.py
-    skills/callparity-refute   Agent skill
+    skills/callparity-claimkill  Skill merged upstream as #220, mirrored byte-identical
+    demo/                        Workbench screenshot
     DEMO_SCRIPT.md PITCH_DECK.md SUBMISSION_TEXT.md
 
 ## Tests

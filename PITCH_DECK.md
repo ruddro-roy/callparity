@@ -54,13 +54,13 @@ Moat is the refutation compiler (disclosure budget + set-cover + fail-closed mer
 ## Slide 6 - Business Model
 
 - Pilot: per-desk seat plus usage on live CALL-E minutes (we do not resell minutes).
-- Production: annual ops-desk license tied to ticket volume, plus a skill listing in awesome-phone-call-agents.
+- Production: annual ops-desk license tied to ticket volume, plus the ClaimKill skill already merged into awesome-phone-call-agents ([#220](https://github.com/CALLE-AI/awesome-phone-call-agents/pull/220)).
 - Expansion: domain packs (freight, prior-auth, construction) that swap entity schemas, not the planner.
 - Human remains the commitment owner. We sell parity, not authority.
 
 ## Slide 7 - Roadmap
 
-Now (hackathon ship). Fixture-complete FR-1842 / FR-1900 / FR-1888. HMAC-optional webhook. E2E demo loop green. Skill folder ready to PR.
+Now (hackathon ship). Fixture-complete FR-1842 / FR-1900 / FR-1888. HMAC-optional webhook. E2E demo loop green. ClaimKill skill merged upstream ([#220](https://github.com/CALLE-AI/awesome-phone-call-agents/pull/220)); one real CALL-E call placed through the live adapter.
 
 Next 30 days. Wire a real CALL-E account (CALLE_API_TOKEN), public webhook, consent-backed numbers. One live freight desk.
 

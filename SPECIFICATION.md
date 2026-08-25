@@ -30,7 +30,7 @@ Equal weights (25% each). Internal utility also applied Novelty 30 / Depth 30 / 
 
 | Concept | Novelty | Depth | Impact | Demo 90s | Total | Notes |
 |---|---:|---:|---:|---:|---:|---|
-| **A. CallParity** (locked) | 28 | 28 | 23 | 13 | **92** | Not in awesome list. Two-call test. Fixture-safe punchline. |
+| **A. CallParity** (locked) | 28 | 28 | 23 | 13 | **92** | Two-call test. Fixture-safe punchline. Skill merged upstream as [#220](https://github.com/CALLE-AI/awesome-phone-call-agents/pull/220). |
 | B. Invoice voice 3-way match | 23 | 25 | 25 | 13 | 86 | Practical, closer to AI that calls the vendor. |
 | C. Exception-only voice gate | 21 | 24 | 24 | 14 | 83 | Strong ops story, weaker novelty vs existing escalation skills. |
 
@@ -72,7 +72,7 @@ Monorepo:
 /apps/web          Vite + React + Tailwind workbench
 /apps/api          FastAPI + Python 3.12, Pydantic v2
 /packages/shared   JSON Schema for claims, tickets, actions
-/skills/callparity-refute   Agent skill wrapping the planner
+/skills/callparity-claimkill   Skill merged upstream as #220, mirrored byte-identical
 ```
 
 Containers (`docker-compose.yml`):
@@ -112,19 +112,19 @@ See `packages/shared/schemas`. Ticket FR-1842, Claim records, graph edges (`CONF
 ## 9. Planner algorithm
 
 1. Drop claims with `confidence < 0.45` into `ABSTAIN`.
-2. Generate candidate observables Party B could have seen.
-3. Score information gain vs leakage. Discard leaks.
+2. Generate candidate observables Party B could have seen, plus the naive recap a follow-up bot would ask.
+3. Structural leak check: drop a question when Party B could recover what A asserted from it (reported speech of a recap subject, an asserted slot value, a verbatim 3-word quote fragment, yes/no framing of a contested predicate, blame or clinical language). Perception questions about B's own observations stay.
 4. Greedy set-cover until each claim has a covering question or is `UNTESTED`.
-5. Render CALL-E goal + JSON Schema. Refuse if spoken-time budget is exceeded or a critical entity id is missing.
+5. Render CALL-E goal + JSON Schema. Refuse if spoken-time budget is exceeded or the ticket has no critical entity id.
 
 ## 10-15. UI, safety, demo, tests, submission
 
-Workbench: ticket header, two call rails, claim graph, action card, evidence drawer, Preview vs Run.
+Workbench: one screen. Ticket header, Party A claims, refute plan with dropped leaks, Party B claims, action card, merged graph with quoted spans. Preview and Run parity buttons.
 
-Safety: consent required; preview default; mask E.164; structured logs; cancel before `run_call`.
+Safety: consent required; preview default; mask E.164 in logs and UI; structured logs; cancel before `run_call`.
 
 Seed: `scripts/seed_demo_data.py` inserts FR-1842, FR-1900, FR-1888.
 
-Tests: planner, merger, idempotency, webhook, e2e demo loop.
+Tests: planner leak check, merger, idempotency, webhook, live adapter wire format (mocked), merged skill regressions, e2e demo loop.
 
-Skill PR shape: `skills/callparity-refute`.
+Skill: `skills/callparity-claimkill`, merged upstream as [#220](https://github.com/CALLE-AI/awesome-phone-call-agents/pull/220).
