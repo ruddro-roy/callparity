@@ -127,3 +127,4 @@ class Healthz(BaseModel):
     postgres: str
     redis: str
     calle: str
+    mode: str

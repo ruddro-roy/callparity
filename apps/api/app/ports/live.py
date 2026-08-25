@@ -30,11 +30,21 @@ class LiveCalleSdk:
     """CALL-E Developer API adapter: plan_call → run_call → get_call_run.
 
     Maps to POST /v1/calls and GET /v1/calls/{call_id}. Requires CALLE_API_TOKEN.
+    Tests inject an httpx transport; production uses the default network one.
     """
 
-    def __init__(self, base_url: str, token: str | None = None) -> None:
+    def __init__(
+        self,
+        base_url: str,
+        token: str | None = None,
+        transport: httpx.BaseTransport | None = None,
+    ) -> None:
         self.base_url = base_url.rstrip("/")
         self.token = token or ""
+        self._transport = transport
+
+    def _client(self, timeout: float) -> httpx.Client:
+        return httpx.Client(timeout=timeout, transport=self._transport)
 
     def _headers(self) -> dict[str, str]:
         headers = {"Accept": "application/json", "Content-Type": "application/json"}
@@ -46,7 +56,7 @@ class LiveCalleSdk:
         if not self.base_url:
             return False
         try:
-            with httpx.Client(timeout=3.0) as client:
+            with self._client(3.0) as client:
                 resp = client.get(f"{self.base_url}/healthz", headers=self._headers())
                 if resp.status_code < 500:
                     return True
@@ -101,7 +111,7 @@ class LiveCalleSdk:
             "consent_disclosed": True,
         }
         log.info("calle_run_call", ticket_id=plan.ticket_id, party=plan.party_role, plan_id=plan.plan_id)
-        with httpx.Client(timeout=30.0) as client:
+        with self._client(30.0) as client:
             resp = client.post(f"{self.base_url}/v1/calls", json=body, headers=self._headers())
             resp.raise_for_status()
             data = resp.json()
@@ -113,7 +123,7 @@ class LiveCalleSdk:
     def get(self, run: RunRef) -> RunView:
         if not self.token:
             raise RuntimeError("CALLE_API_TOKEN is not set; refuse get_call_run")
-        with httpx.Client(timeout=15.0) as client:
+        with self._client(15.0) as client:
             resp = client.get(f"{self.base_url}/v1/calls/{run.run_id}", headers=self._headers())
             resp.raise_for_status()
             data = resp.json()

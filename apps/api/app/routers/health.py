@@ -23,4 +23,5 @@ def healthz() -> Healthz:
     rd = "up" if ping_redis() else "down"
     calle = "up" if get_calle().ping() else "down"
     status = "ok" if pg == "up" and rd == "up" and calle == "up" else "degraded"
-    return Healthz(status=status, postgres=pg, redis=rd, calle=calle)
+    mode = "fixture" if get_settings().use_fixtures else "live"
+    return Healthz(status=status, postgres=pg, redis=rd, calle=calle, mode=mode)
