@@ -1,60 +1,57 @@
-# CallParity - 90-second demo script
+# CallParity, 90-second demo script
 
 **One line:** Two phones, one operational fact, a live contradiction graph.
 
-**Seeded scenario (always on):** Ticket `FR-1842`. Pallet `PL-9F21` of 40 refrigerated insulin cartons. Warehouse (Party A) says it left Dock 3 at 06:40. Driver (Party B) says they were waved off because the pallet was never staged. Ops is stuck in email. SLA burn: $18k/hour of delayed cold-chain.
+**Recording setup:** `docker compose up -d --build`, then a 1920x1080 screen capture of http://localhost:3000 at 100% zoom. The whole demo is the running workbench. No slides, no stills. Fixtures are on (`USE_FIXTURES=true`), so the punchline never depends on a live carrier; the amber banner says so on screen.
 
-Demo boots from fixtures (`USE_FIXTURES=true`) so the punchline never depends on a live carrier. A live CALL-E path is one toggle away.
-
----
-
-## 0:00-0:20 - The visceral problem
-
-**On screen:** Ops console, ticket FR-1842. Two chat threads and a stale TMS status that disagree. Clock showing 47 minutes past pickup.
-
-**Say:**
-"This is a $18,000-an-hour cold-chain miss. The warehouse says the pallet left. The driver says it never existed on the dock. Nobody is lying on purpose. Both sides are working from a different clock and a different door. Email will not close this."
-
-**Show:** Highlight the two conflicting sentences. Show the cost ticker.
+**Seeded scenario:** Ticket `FR-1842`. Pallet `PL-9F21`, refrigerated insulin cartons as cargo. Warehouse (Party A) says it left Dock 3 at 06:40. Driver (Party B) says dock 3 was empty and they were waved off. SLA burn: $18k/hour of delayed cold-chain.
 
 ---
 
-## 0:20-0:45 - The novel mechanism
+## 0:00-0:15, the problem on screen
 
-**On screen:** Split view. Left: typed claim graph extracted from Party A (warehouse). Right: a *refutation plan* compiled for Party B (driver), not a second copy of the same script.
+**Do:** Nothing yet. FR-1842 is already loaded: ticket id, the fact question, the $18k/hour SLA chip, masked party numbers, empty columns.
 
 **Say:**
-"CallParity does not run two generic follow-up calls. The first CALL-E run returns structured claims with transcript spans. A planner then compiles the cheapest set of questions that could *falsify* those claims. The second call is a test, not a recap."
-
-**Show:**
-- Claim `pallet_staged_dock_3 @ 06:40` (confidence 0.81, span highlighted).
-- Compiled B-questions: "Which dock did you pull to?", "Did you see PL-9F21 on a jack?", "Who waved you off?"
-- Goal text and result schema that will be sent to CALL-E `plan_call` -> `run_call`.
+"This is an $18,000-an-hour cold-chain miss. The warehouse says the pallet left Dock 3. The driver says Dock 3 was empty. Nobody is lying on purpose. Email will not close this. CallParity treats the disagreement as a testable claim graph."
 
 ---
 
-## 0:45-1:15 - The live punchline
+## 0:15-0:35, Preview: zero calls
 
-**On screen:** Two live call rails (fixture playback that looks like CALL-E status: planning -> ringing -> talking -> structured result). Then the merge.
-
-**Do:**
-1. Click **Run parity** on FR-1842 (idempotent).
-2. Watch Party A complete. Claims appear as nodes.
-3. Watch Party B compile and run automatically.
-4. The graph lights: one CONFIRMED (driver did arrive), one CONTRADICTED (pallet on Dock 3), one UNTESTED (seal number never asked).
+**Do:** Click **Preview (0 calls)**. Party A claims fill the left column. The refute plan fills the second column.
 
 **Say:**
-"Fourteen seconds after the second hang-up, ops has a ticket they can act on: restage PL-9F21 at Dock 3, call the driver back to door, do not resend the truck empty. Every edge quotes the words that produced it."
+"Preview compiles everything without placing a call. Party A's transcript becomes typed claims with quoted spans and confidence. Then the planner writes the second call as a test of the first: the cheapest observable questions that could falsify what A said."
 
-**Show:** Action card auto-generated: `RESTAGE_AND_RECALL`. Evidence chips. Latency and token telemetry in the footer.
+**Point at:** the "Dropped by leak check" entry. The struck-through question "Can you confirm PL-9F21 pallet staged at dock 3 and at 06:40?" with its reasons.
+
+**Say:**
+"This is the question a naive follow-up bot would ask. It hands the driver the warehouse's answer. The leak check drops it structurally, asserted values and polar framing, not a banned-word list. The driver never hears what the warehouse asserted."
 
 ---
 
-## 1:15-1:30 - Architecture, scale, market
+## 0:35-1:00, Run parity: the punchline
 
-**On screen:** One diagram. Vite workbench -> FastAPI planner -> Redis job queue -> CALL-E SDK (`plan_call` / `run_call` / `get_call_run` + webhook) -> Postgres claim ledger. Fixture adapter sits behind the same port.
+**Do:** Click **Run parity**. Watch the rail status line: A planning, on the call, claims extracted; then B. Party B claims fill. The graph lights up. The action card flips.
 
 **Say:**
-"Same loop for any two-sided operational fact: freight, prior-auth, construction materials, insurance supplements. We isolate CALL-E behind a queue and high-fidelity fixtures so the demo never dies on a busy signal. One compose command boots it. The reusable piece is the skill: compile a refutation call from another party's structured claims."
+"Both calls run through the same CallePort that drives the live CALL-E API. Party B answers observable questions only. The merger does the confrontation: pallet_staged CONTRADICTED, driver_arrived CONFIRMED, seal UNTESTED because nobody read it. One action card: restage PL-9F21 and recall the driver. Every edge quotes the words that produced it. A human owns the card."
 
-**Close card:** `docker compose up --build` . PR destination `apps/typescript/callparity` + `skills/callparity-refute`.
+---
+
+## 1:00-1:20, controls: agreement and silence
+
+**Do:** Click **FR-1900 control**, then **Run parity**. The card reads RELEASE_TRUCK. Click **FR-1888 voicemail**, then **Run parity**. The card reads HOLD_FOR_HUMAN.
+
+**Say:**
+"Same machinery, no contradiction: release the truck. And when the driver's phone goes to voicemail, silence is not confirmation. Unreachable holds for a human."
+
+---
+
+## 1:20-1:30, close
+
+**Do:** Show the terminal: `docker compose up -d --build`, then `pytest -q` green.
+
+**Say:**
+"One compose command boots it, 49 tests cover it. The refutation planner is merged into awesome-phone-call-agents as ClaimKill, PR 220. The live adapter has placed a real CALL-E call on a public IVR line; the FR-1842 graph you saw runs on fixtures until two consenting parties are on the line."

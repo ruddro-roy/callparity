@@ -83,6 +83,7 @@ class RefutationQuestion(BaseModel):
     gain: float = 0.0
     leak: float = 0.0
     net: float = 0.0
+    leak_kinds: list[str] = Field(default_factory=list)
 
 
 class GraphEdge(BaseModel):
@@ -126,3 +127,4 @@ class Healthz(BaseModel):
     postgres: str
     redis: str
     calle: str
+    mode: str

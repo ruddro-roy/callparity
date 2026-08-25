@@ -97,8 +97,18 @@ def span(transcript: str, needles: tuple[str, ...]) -> str:
         if idx >= 0:
             start = max(0, idx - 24)
             end = min(len(transcript), idx + 52)
+            # Trim to word boundaries so quoted spans never cut mid-word.
+            if start > 0:
+                space = transcript.find(" ", start, idx)
+                if space >= 0:
+                    start = space + 1
+            if end < len(transcript):
+                space = transcript.rfind(" ", idx + len(needle), end)
+                if space > idx:
+                    end = space
             return transcript[start:end].strip()
-    return transcript[:80]
+    # No needle spoken: no quote. An invented span would fake evidence.
+    return ""
 
 
 def _from_raw(ticket_id: str, role: PartyRole, run: RunView, raw: dict) -> Claim:

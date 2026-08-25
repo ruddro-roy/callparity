@@ -32,8 +32,10 @@ services:
     environment:
       DATABASE_URL: postgresql+psycopg2://callparity:callparity@postgres:5432/callparity
       REDIS_URL: redis://redis:6379/0
-      USE_FIXTURES: "true"
-      CALLE_BASE_URL: http://fixtures:8080
+      USE_FIXTURES: ${USE_FIXTURES:-true}
+      CALLE_BASE_URL: ${CALLE_BASE_URL:-}
+      CALLE_API_TOKEN: ${CALLE_API_TOKEN:-}
+      CALLE_WEBHOOK_SECRET: ${CALLE_WEBHOOK_SECRET:-}
       REDIS_OPTIONAL: "false"
       SEED_ON_STARTUP: "true"
     depends_on:
@@ -53,10 +55,6 @@ services:
     build:
       context: .
       dockerfile: apps/web/Dockerfile
-    environment:
-      API_URL: http://api:8000
-      NEXT_PUBLIC_API_URL: ""
-      VITE_PUBLIC_API_URL: ""
     depends_on:
       api:
         condition: service_healthy
