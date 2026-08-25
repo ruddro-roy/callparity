@@ -25,7 +25,7 @@ A small monorepo: FastAPI engine, Vite/React workbench, Postgres plus Redis, and
 
 The reusable piece is ClaimKill, merged into the community list as CALLE-AI/awesome-phone-call-agents#220 (https://github.com/CALLE-AI/awesome-phone-call-agents/pull/220): a standalone leak-drop planner with fixtures and twelve regression tests, mirrored byte-identical in this repo under skills/callparity-claimkill.
 
-The live adapter has placed one real call through the official Calls API: call_MyNjJhQagaufl39imDf6mg (provider_call_id 30e2d3c7b9864eb8a9630616457ed9bf), a public Waffle House guest IVR check on the workspace's default outbound number. The call completed with task_completed true. Hours were not stated, so the proof covers the adapter contract and polling path, not hours retrieval. It is not an FR-1842 parity run, and we do not claim a live two-party run happened.
+The live proof is one real human conversation: call_Sv3d5Dt3jj0YabV9IJZh7g (provider_call_id 504d94e961ec48578060a4ea7844a4f6), placed to a public diner, Tom's Restaurant. A person answered. The transcript beat: bot Hello / person Hello / bot What time do you close today / person Yeah. 11. / bot Thank you, bye. The structured result: reached=human, spoke_with_human=yes, closing_time=11. It is not an FR-1842 parity run, and we do not claim a live two-party run happened.
 
 ## Challenges we ran into
 

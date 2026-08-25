@@ -79,7 +79,7 @@ The planner also generates the naive recap a follow-up bot would ask ("Can you c
 
 ## Live CALL-E proof
 
-The live adapter has placed one real call through the official Calls API: `call_MyNjJhQagaufl39imDf6mg` (provider_call_id `30e2d3c7b9864eb8a9630616457ed9bf`), to a public Waffle House guest IVR line. The call completed with task_completed true, and the workspace's default outbound number placed it with no rented from-number. Hours were not stated on the call, so the proof covers the task/recipients contract, the bearer token, the Idempotency-Key path, default outbound, and GET polling, not hours retrieval. It is not an FR-1842 parity run. No live two-party FR-1842 call has happened.
+The live proof is one real human conversation: `call_Sv3d5Dt3jj0YabV9IJZh7g` (provider_call_id `504d94e961ec48578060a4ea7844a4f6`), placed to a public diner, Tom's Restaurant. A person answered. The transcript beat: bot Hello / person Hello / bot What time do you close today / person Yeah. 11. / bot Thank you, bye. The structured result: reached=human, spoke_with_human=yes, closing_time=11. It is not an FR-1842 parity run. No live two-party FR-1842 call has happened.
 
 ## Place one live hours call (operator path)
 
@@ -95,7 +95,7 @@ Secrets and the destination live only in the shell environment. Never commit a t
 
 The script refuses to dial when a variable is missing, when the phone is not E.164, or when consent is not `yes`. It exits 2 and names the variable to fix. On success stdout carries only two kinds of lines, `call_id <id>` and `status <status>`. Adapter logs go to stderr with the destination masked, and the token is never printed.
 
-The workspace's default outbound number places the call, and the live proof call used exactly that path. Renting or assigning a dedicated from-number is an operator step in the CALL-E workspace, outside this repo. The Calls API ([docs.heycall-e.com/calls](https://docs.heycall-e.com/calls)) defines no `from_number` request field, so a `CALLE_FROM_NUMBER` variable would be dead config and is not read.
+The workspace's default outbound number places calls. No from-number was rented. Renting or assigning a dedicated from-number is an operator step in the CALL-E workspace, outside this repo. The Calls API ([docs.heycall-e.com/calls](https://docs.heycall-e.com/calls)) defines no `from_number` request field, so a `CALLE_FROM_NUMBER` variable would be dead config and is not read.
 
 ## Safety
 
