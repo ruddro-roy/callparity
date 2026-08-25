@@ -383,7 +383,7 @@ def score_candidates(
             "gain": gain,
             "leak": leak,
             "net": gain - leak,
-            "leak_kinds": [f.kind.value for f in findings],
+            "leak_kinds": list(dict.fromkeys(f.kind.value for f in findings)),
         }
         if leak >= LEAK_DROP_THRESHOLD or scored["net"] <= 0:
             dropped.append(scored)

@@ -387,7 +387,7 @@ export default function App() {
             </p>
             {job && (
               <p className="mt-auto pt-3 font-mono text-sm text-slate-300">
-                job {job.id} · {job.status} · phase {phase}
+                {job.id} · {job.status} · phase {phase}
               </p>
             )}
           </section>
