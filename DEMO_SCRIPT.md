@@ -54,4 +54,4 @@
 **Do:** Show the terminal: `docker compose up -d --build`, then `pytest -q` green.
 
 **Say:**
-"One compose command boots it, 49 tests cover it. The refutation planner is merged into awesome-phone-call-agents as ClaimKill, PR 220. The live adapter has placed a real CALL-E call on a public IVR line; the FR-1842 graph you saw runs on fixtures until two consenting parties are on the line."
+"One compose command boots it, 73 tests cover it. The refutation planner is merged into awesome-phone-call-agents as ClaimKill, PR 220. The live adapter has placed a real CALL-E call on a public IVR line; the FR-1842 graph you saw runs on fixtures until two consenting parties are on the line."

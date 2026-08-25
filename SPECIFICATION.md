@@ -55,6 +55,8 @@ plus Developer API fallback:
 | GET | `/v1/calls/{call_id}/events` | Event stream |
 | POST | `/calle/webhook` | Terminal result |
 
+Create body per the official Calls API ([docs.heycall-e.com/calls](https://docs.heycall-e.com/calls)): `task`, optional `recipients[].phones` (E.164), `result_schema`, and `metadata`, plus an `Idempotency-Key` header. GET on the bare `/v1/calls` collection is 405.
+
 Rules we inherit from the community repo:
 
 - Consent and recording disclosure on every live call.

@@ -73,13 +73,13 @@ The planner also generates the naive recap a follow-up bot would ask ("Can you c
 
 **Idea (tie-break 2).** Cross-call refutation: hypotheses from A, minimum observable questions for B, disclosure budget, structural leak check. The second call is a test of the first. Merged into awesome-phone-call-agents as [#220](https://github.com/CALLE-AI/awesome-phone-call-agents/pull/220).
 
-**Implementation (tie-break 3).** FastAPI, Pydantic, fixture + live adapters behind one port, mocked wire-format tests for POST /v1/calls, HMAC-optional webhook (fail closed), authorization-based idempotency, structured JSON logs, SSE phases, 70 tests across planner, merger, idempotency, webhook, live adapter, operator script, skill, and the e2e demo loop (the compose smoke skips when the stack is down).
+**Implementation (tie-break 3).** FastAPI, Pydantic, fixture + live adapters behind one port, mocked wire-format tests for POST /v1/calls, HMAC-optional webhook (fail closed), authorization-based idempotency, structured JSON logs, SSE phases, 73 tests across planner, merger, idempotency, webhook, live adapter, operator script, skill, and the e2e demo loop (the compose smoke skips when the stack is down).
 
 **Demo (tie-break 4).** One screen: A claims, refute plan with the dropped leak, B claims, action card, merged graph. DEMO_SCRIPT.md walks it in 90 seconds. Fixtures so a busy signal cannot kill the punchline.
 
 ## Live CALL-E proof
 
-The live adapter has placed one real CALL-E call: `call_id 855acdb09cbb4b62a3c95c51988727b8`, a public restaurant-hours IVR check. The numbers used were released afterward. That call proves the adapter, token, and polling path work against the real API. It is not an FR-1842 parity run; no live two-party FR-1842 call has happened.
+The live adapter has placed one real call through the official Calls API: `call_MyNjJhQagaufl39imDf6mg` (provider_call_id `30e2d3c7b9864eb8a9630616457ed9bf`), to a public Waffle House guest IVR line. The call completed with task_completed true, and the workspace's default outbound number placed it with no rented from-number. Hours were not stated on the call, so the proof covers the task/recipients contract, the bearer token, the Idempotency-Key path, default outbound, and GET polling, not hours retrieval. It is not an FR-1842 parity run. No live two-party FR-1842 call has happened.
 
 ## Place one live hours call (operator path)
 
@@ -87,15 +87,15 @@ The live adapter has placed one real CALL-E call: `call_id 855acdb09cbb4b62a3c95
 
 Secrets and the destination live only in the shell environment. Never commit a token or a phone number. `.env` is gitignored and the seeds use fictional +1555 numbers.
 
-    export CALLE_BASE_URL=      # your CALL-E workspace API base URL
-    export CALLE_API_TOKEN=     # token from that workspace
+    export CALLE_BASE_URL=      # the CALL-E API base URL (https://api.heycall-e.com)
+    export CALLE_API_TOKEN=     # token from your CALL-E workspace
     export CALLE_LIVE_TO_PHONE= # destination in E.164: + then 8 to 15 digits
     export CALLE_CONSENT=yes    # confirms the callee may be dialed and recorded
     python scripts/live_hours_call.py
 
 The script refuses to dial when a variable is missing, when the phone is not E.164, or when consent is not `yes`. It exits 2 and names the variable to fix. On success stdout carries only two kinds of lines, `call_id <id>` and `status <status>`. Adapter logs go to stderr with the destination masked, and the token is never printed.
 
-The workspace's default outbound number places the call. Renting or assigning a dedicated from-number is an operator step in the CALL-E workspace, outside this repo. The POST body carries no `from_number` field because the pinned wire format (SPECIFICATION.md, `tests/test_live_adapter.py`) does not define one, so a `CALLE_FROM_NUMBER` variable would be dead config and is not read.
+The workspace's default outbound number places the call, and the live proof call used exactly that path. Renting or assigning a dedicated from-number is an operator step in the CALL-E workspace, outside this repo. The Calls API ([docs.heycall-e.com/calls](https://docs.heycall-e.com/calls)) defines no `from_number` request field, so a `CALLE_FROM_NUMBER` variable would be dead config and is not read.
 
 ## Safety
 
@@ -115,7 +115,7 @@ CallParity invokes the runtime (or a fixture that implements the same port):
 
     plan_call -> run_call -> get_call_run
 
-Developer API used by LiveCalleSdk: POST /v1/calls, GET /v1/calls/{call_id}, events poll, POST /v1/webhooks/calle. The wire format is pinned by mocked-transport tests in `tests/test_live_adapter.py`; CI never dials.
+Developer API used by LiveCalleSdk, per [docs.heycall-e.com/calls](https://docs.heycall-e.com/calls): POST /v1/calls carries task, recipients[].phones (E.164), result_schema, metadata, and an Idempotency-Key header. GET /v1/calls/{call_id} and GET /v1/calls/{call_id}/events read the call state. GET on the bare collection is 405. The wire format is pinned by mocked-transport tests in `tests/test_live_adapter.py`. CI never dials.
 
 Rules: consent and recording disclosure on every live call; masked fictional numbers in seeds; dry-run and fixture mode by default; fail-closed dispositions; host owns scheduling, CALL-E owns one-shot calls.
 
