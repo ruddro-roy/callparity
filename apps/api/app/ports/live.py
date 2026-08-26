@@ -70,7 +70,10 @@ class LiveCalleSdk:
         self.token = (token or "").strip()
         self._transport = transport
 
-    def _require_config(self) -> None:
+    def _require_config(
+        self,
+        remedy: str = "Live calls need both. Set them in the environment or run with USE_FIXTURES=true.",
+    ) -> None:
         missing = [
             name
             for name, value in (
@@ -80,10 +83,7 @@ class LiveCalleSdk:
             if not value
         ]
         if missing:
-            raise RuntimeError(
-                f"{' and '.join(missing)} not set. Live calls need both. "
-                "Set them in the environment or run with USE_FIXTURES=true."
-            )
+            raise RuntimeError(f"{' and '.join(missing)} not set. {remedy}")
 
     def _headers(self) -> dict[str, str]:
         headers = {"Accept": "application/json", "Content-Type": "application/json"}
@@ -216,7 +216,11 @@ class LiveCalleSdk:
         return RunRef(run_id=str(call_id), plan_id=plan.plan_id)
 
     def get(self, run: RunRef) -> RunView:
-        self._require_config()
+        # Fixture mode has no copy of a real call record, so the dial-path
+        # remedy (run with USE_FIXTURES=true) would send the reader in a circle.
+        self._require_config(
+            remedy="Reading a call record needs both. Set them in the environment."
+        )
         data = self._request("GET", f"/v1/calls/{run.run_id}", _GET_TIMEOUT)
         return RunView(
             run_id=run.run_id,

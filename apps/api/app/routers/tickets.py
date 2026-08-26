@@ -8,15 +8,16 @@ from fastapi.responses import JSONResponse, StreamingResponse
 from sqlalchemy.orm import Session
 
 from app.db import get_session
-from app.deps import get_calle
+from app.deps import get_calle, get_live_reader
 from app.models.orm import TicketRow, TranscriptPointer
-from app.models.schemas import Ticket, TicketCreate
+from app.models.schemas import Job, ParityImportRequest, Ticket, TicketCreate
 from app.ports.calle import CallePort, RunView
+from app.ports.live import CalleApiError
 from app.services.events import encode, snapshot
 from app.services.extractor import extract_claims
 from app.services.idempotency import sha256_text
 from app.services.jobs import enqueue_parity
-from app.services.parity import latest_card
+from app.services.parity import import_parity_from_calls, latest_card
 from app.services.planner import compile_refutation
 
 router = APIRouter(prefix="/v1")
@@ -78,6 +79,30 @@ def start_parity(
             raise HTTPException(403, f"consent required for party {party.get('role')}")
     job = enqueue_parity(session, ticket_id, calle, idempotency_key, background)
     return JSONResponse(status_code=202, content=job.model_dump(mode="json"))
+
+
+@router.post("/tickets/{ticket_id}/parity/import", response_model=Job)
+def import_parity(
+    ticket_id: str,
+    payload: ParityImportRequest,
+    session: Session = Depends(get_session),
+    reader: CallePort = Depends(get_live_reader),
+) -> Job:
+    """Run parity on two existing CALL-E call records. Never places a call."""
+    row = session.get(TicketRow, ticket_id)
+    if not row:
+        raise HTTPException(404, "ticket not found")
+    for party in row.parties:
+        if not party.get("consent"):
+            raise HTTPException(403, f"consent required for party {party.get('role')}")
+    try:
+        return import_parity_from_calls(
+            session, ticket_id, payload.call_id_a, payload.call_id_b, reader
+        )
+    except CalleApiError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+    except RuntimeError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
 
 
 @router.post("/tickets/{ticket_id}/preview")

@@ -1,0 +1,15 @@
+{
+  "id": "call_vzro922bOACJjf19ML7vQQ",
+  "status": "completed",
+  "task_completed": true,
+  "structured_result": {
+    "pallet_staged": true,
+    "dock": "3",
+    "at": "06:40",
+    "pallet_id": "PL-9F21",
+    "driver_seen": true,
+    "spoke_with_human": "yes"
+  },
+  "transcript": "",
+  "summary": ""
+}

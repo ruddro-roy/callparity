@@ -51,6 +51,41 @@ def _persist_claims(session: Session, claims: list[Claim]) -> None:
         )
 
 
+def _store_transcript(session: Session, ticket_id: str, body: str) -> str:
+    """Store the spoken words behind a sha256 pointer. Empty stores nothing."""
+    if not body:
+        return ""
+    ptr = sha256_text(body)
+    store_pointer(ptr, body)
+    session.merge(TranscriptPointer(sha256=ptr, ticket_id=ticket_id, body=body))
+    return ptr
+
+
+def _persist_graph(session: Session, ticket_id: str, edges: list[GraphEdge], card: ActionCard) -> None:
+    session.query(EdgeRow).filter(EdgeRow.ticket_id == ticket_id).delete()
+    for edge in edges:
+        session.add(
+            EdgeRow(
+                id=f"edge_{uuid.uuid4().hex[:10]}",
+                ticket_id=ticket_id,
+                hypothesis_id=edge.hypothesis_id,
+                status=edge.status.value,
+                a_span=edge.a_span,
+                b_span=edge.b_span,
+                action=edge.action.value if edge.action else None,
+                predicate=edge.predicate,
+            )
+        )
+    session.add(
+        ActionCardRow(
+            id=f"act_{uuid.uuid4().hex[:10]}",
+            ticket_id=ticket_id,
+            action=card.action.value,
+            rationale=card.rationale,
+        )
+    )
+
+
 def _set_phase(session: Session, job_id: str | None, ticket_id: str, phase: str, extra: dict | None = None) -> None:
     if job_id:
         row = session.get(JobRow, job_id)
@@ -142,9 +177,7 @@ def run_parity_loop(
     _set_phase(session, job_id, ticket_id, "a_talking", {"rail": "A"})
     run_a = calle.run(plan_a)
     view_a = calle.get(RunRef(run_id=run_a.run_id, plan_id=plan_a.plan_id))
-    ptr_a = sha256_text(view_a.transcript)
-    store_pointer(ptr_a, view_a.transcript)
-    session.merge(TranscriptPointer(sha256=ptr_a, ticket_id=ticket_id, body=view_a.transcript))
+    ptr_a = _store_transcript(session, ticket_id, view_a.transcript)
 
     claims_a = extract_claims(ticket_id, "A", view_a)
     _persist_claims(session, claims_a)
@@ -170,37 +203,14 @@ def run_parity_loop(
     _set_phase(session, job_id, ticket_id, "b_talking", {"rail": "B"})
     run_b = calle.run(plan_b)
     view_b = calle.get(RunRef(run_id=run_b.run_id, plan_id=plan_b.plan_id))
-    ptr_b = sha256_text(view_b.transcript)
-    store_pointer(ptr_b, view_b.transcript)
-    session.merge(TranscriptPointer(sha256=ptr_b, ticket_id=ticket_id, body=view_b.transcript))
+    ptr_b = _store_transcript(session, ticket_id, view_b.transcript)
 
     claims_b = extract_claims(ticket_id, "B", view_b)
     _persist_claims(session, claims_b)
     _set_phase(session, job_id, ticket_id, "b_claims", {"rail": "B", "claims": [c.model_dump(mode="json") for c in claims_b]})
 
     edges, card = merge_graph(ticket_id, claims_a, claims_b)
-    session.query(EdgeRow).filter(EdgeRow.ticket_id == ticket_id).delete()
-    for edge in edges:
-        session.add(
-            EdgeRow(
-                id=f"edge_{uuid.uuid4().hex[:10]}",
-                ticket_id=ticket_id,
-                hypothesis_id=edge.hypothesis_id,
-                status=edge.status.value,
-                a_span=edge.a_span,
-                b_span=edge.b_span,
-                action=edge.action.value if edge.action else None,
-                predicate=edge.predicate,
-            )
-        )
-    session.add(
-        ActionCardRow(
-            id=f"act_{uuid.uuid4().hex[:10]}",
-            ticket_id=ticket_id,
-            action=card.action.value,
-            rationale=card.rationale,
-        )
-    )
+    _persist_graph(session, ticket_id, edges, card)
 
     settings = get_settings()
     result = {
@@ -238,6 +248,94 @@ def run_parity_loop(
             "claims_b": len(claims_b),
             "edges": len(edges),
         },
+    )
+
+
+def import_parity_from_calls(
+    session: Session,
+    ticket_id: str,
+    call_id_a: str,
+    call_id_b: str,
+    reader: CallePort,
+) -> Job:
+    """Merge two existing CALL-E call records into the ticket's claim graph.
+
+    Read-only against CALL-E: both records arrive via reader.get, which is
+    GET /v1/calls/{id}, so this path cannot place a call. Importing the same
+    pair again replays the stored job instead of refetching.
+    """
+    ticket = session.get(TicketRow, ticket_id)
+    if ticket is None:
+        raise KeyError(ticket_id)
+
+    key = derive_idempotency_key(ticket_id, f"import:{call_id_a}:{call_id_b}")
+    existing = session.query(JobRow).filter(JobRow.idempotency_key == key).one_or_none()
+    if existing and existing.status == JobStatus.completed.value and existing.result:
+        return Job(
+            id=existing.id,
+            ticket_id=existing.ticket_id,
+            status=JobStatus.completed,
+            idempotency_key=existing.idempotency_key,
+            result=existing.result,
+            phase=existing.phase or "merged",
+            telemetry=existing.telemetry or {},
+        )
+
+    view_a = reader.get(RunRef(run_id=call_id_a, plan_id=f"import_{ticket_id}_A"))
+    view_b = reader.get(RunRef(run_id=call_id_b, plan_id=f"import_{ticket_id}_B"))
+
+    claims_a = extract_claims(ticket_id, "A", view_a)
+    claims_b = extract_claims(ticket_id, "B", view_b)
+    _persist_claims(session, claims_a)
+    _persist_claims(session, claims_b)
+    ptr_a = _store_transcript(session, ticket_id, view_a.transcript)
+    ptr_b = _store_transcript(session, ticket_id, view_b.transcript)
+
+    edges, card = merge_graph(ticket_id, claims_a, claims_b)
+    _persist_graph(session, ticket_id, edges, card)
+
+    result = {
+        "graph": [e.model_dump(mode="json") for e in edges],
+        "action": card.model_dump(mode="json"),
+        "call_ids": {"a": call_id_a, "b": call_id_b},
+        "transcript_pointers": {"a": ptr_a, "b": ptr_b},
+        "spans": {
+            "a": [c.evidence_span for c in claims_a],
+            "b": [c.evidence_span for c in claims_b],
+        },
+        "claims_a": [c.model_dump(mode="json") for c in claims_a],
+        "claims_b": [c.model_dump(mode="json") for c in claims_b],
+        "mode": "live_import",
+    }
+    telemetry = {
+        "mode": "live_import",
+        "claims_a": len(claims_a),
+        "claims_b": len(claims_b),
+        "edges": len(edges),
+    }
+    row = existing or JobRow(id=f"job_{uuid.uuid4().hex[:12]}", ticket_id=ticket_id, idempotency_key=key)
+    row.status = JobStatus.completed.value
+    row.phase = "merged"
+    row.result = result
+    row.telemetry = telemetry
+    session.add(row)
+    session.flush()
+    log.info(
+        "parity_import_complete",
+        ticket_id=ticket_id,
+        job_id=row.id,
+        action=card.action.value,
+        call_id_a=call_id_a,
+        call_id_b=call_id_b,
+    )
+    return Job(
+        id=row.id,
+        ticket_id=ticket_id,
+        status=JobStatus.completed,
+        idempotency_key=key,
+        result=result,
+        phase="merged",
+        telemetry=telemetry,
     )
 
 
