@@ -4,7 +4,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Any
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 class PartyRole(str, Enum):
@@ -101,6 +101,21 @@ class ActionCard(BaseModel):
     rationale: str
     edges: list[GraphEdge] = Field(default_factory=list)
     created_at: datetime | None = None
+
+
+class ParityImportRequest(BaseModel):
+    """Two existing CALL-E call ids: A answered as the warehouse, B as the driver."""
+
+    call_id_a: str
+    call_id_b: str
+
+    @field_validator("call_id_a", "call_id_b")
+    @classmethod
+    def _require_call_id(cls, value: str) -> str:
+        value = (value or "").strip()
+        if not value:
+            raise ValueError("call_id must be a non-empty CALL-E call id")
+        return value
 
 
 class JobStatus(str, Enum):
