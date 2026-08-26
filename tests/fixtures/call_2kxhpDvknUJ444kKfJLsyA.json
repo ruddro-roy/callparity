@@ -1,0 +1,15 @@
+{
+  "id": "call_2kxhpDvknUJ444kKfJLsyA",
+  "status": "completed",
+  "task_completed": false,
+  "structured_result": {
+    "arrived": true,
+    "dock_3_state": "empty",
+    "dock_pulled_to": "3",
+    "saw_pallet_pl9f21": false,
+    "waved_off_by": "yard marshal",
+    "spoke_with_human": "yes"
+  },
+  "transcript": "",
+  "summary": ""
+}
