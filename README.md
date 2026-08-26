@@ -73,13 +73,15 @@ The planner also generates the naive recap a follow-up bot would ask ("Can you c
 
 **Idea (tie-break 2).** Cross-call refutation: hypotheses from A, minimum observable questions for B, disclosure budget, structural leak check. The second call is a test of the first. Merged into awesome-phone-call-agents as [#220](https://github.com/CALLE-AI/awesome-phone-call-agents/pull/220).
 
-**Implementation (tie-break 3).** FastAPI, Pydantic, fixture + live adapters behind one port, mocked wire-format tests for POST /v1/calls, HMAC-optional webhook (fail closed), authorization-based idempotency, structured JSON logs, SSE phases, 73 tests across planner, merger, idempotency, webhook, live adapter, operator script, skill, and the e2e demo loop (the compose smoke skips when the stack is down).
+**Implementation (tie-break 3).** FastAPI, Pydantic, fixture + live adapters behind one port, mocked wire-format tests for POST /v1/calls, HMAC-optional webhook (fail closed), authorization-based idempotency, structured JSON logs, SSE phases, 83 tests across planner, merger, idempotency, webhook, live adapter, live-record import, operator script, skill, and the e2e demo loop (the compose smoke skips when the stack is down).
 
 **Demo (tie-break 4).** One screen: A claims, refute plan with the dropped leak, B claims, action card, merged graph. DEMO_SCRIPT.md walks it in 90 seconds. Fixtures so a busy signal cannot kill the punchline.
 
 ## Live CALL-E proof
 
-The live proof is one real human conversation: `call_Sv3d5Dt3jj0YabV9IJZh7g` (provider_call_id `504d94e961ec48578060a4ea7844a4f6`), placed to a public diner, Tom's Restaurant. A person answered. The transcript beat: bot Hello / person Hello / bot What time do you close today / person Yeah. 11. / bot Thank you, bye. The structured result: reached=human, spoke_with_human=yes, closing_time=11. It is not an FR-1842 parity run. No live two-party FR-1842 call has happened.
+The live proof is one real human conversation: `call_Sv3d5Dt3jj0YabV9IJZh7g` (provider_call_id `504d94e961ec48578060a4ea7844a4f6`), placed to a public diner, Tom's Restaurant. A person answered. The transcript beat: bot Hello / person Hello / bot What time do you close today / person Yeah. 11. / bot Thank you, bye. The structured result: reached=human, spoke_with_human=yes, closing_time=11.
+
+Two later calls put humans on the FR-1842 fact pattern itself: `call_vzro922bOACJjf19ML7vQQ` (warehouse) and `call_2kxhpDvknUJ444kKfJLsyA` (driver). Their records disagree on whether PL-9F21 is staged at dock 3. The import path below turns that disagreement into RESTAGE_AND_RECALL without placing a new call.
 
 ## Place one live hours call (operator path)
 
@@ -96,6 +98,26 @@ Secrets and the destination live only in the shell environment. Never commit a t
 The script refuses to dial when a variable is missing, when the phone is not E.164, or when consent is not `yes`. It exits 2 and names the variable to fix. On success stdout carries only two kinds of lines, `call_id <id>` and `status <status>`. Adapter logs go to stderr with the destination masked, and the token is never printed.
 
 The workspace's default outbound number places calls. No from-number was rented. Renting or assigning a dedicated from-number is an operator step in the CALL-E workspace, outside this repo. The Calls API ([docs.heycall-e.com/calls](https://docs.heycall-e.com/calls)) defines no `from_number` request field, so a `CALLE_FROM_NUMBER` variable would be dead config and is not read.
+
+## Run parity from the two live call records (operator path)
+
+Two humans answered official CALL-E outbound calls on the FR-1842 fact pattern:
+
+- warehouse: `call_vzro922bOACJjf19ML7vQQ`. Structured result: pallet_staged true, dock 3, at 06:40, pallet PL-9F21, driver seen, spoke_with_human yes.
+- driver: `call_2kxhpDvknUJ444kKfJLsyA`. Structured result: arrived true, dock 3 empty, pulled to dock 3, never saw PL-9F21, waved off by the yard marshal, spoke_with_human yes. task_completed is false because the bot ended the call early. The deny on the pallet stands.
+
+POST /v1/tickets/FR-1842/parity/import fetches both records with GET /v1/calls/{id} and merges them. The path has no dial branch, so it cannot place a call. The rest of the stack stays on USE_FIXTURES=true; the import needs only read credentials:
+
+    export CALLE_BASE_URL=   # https://api.heycall-e.com
+    export CALLE_API_TOKEN=  # token of the workspace that placed the calls
+    docker compose up -d --build
+    curl -s -X POST http://localhost:8000/v1/tickets/FR-1842/parity/import \
+      -H 'Content-Type: application/json' \
+      -d '{"call_id_a": "call_vzro922bOACJjf19ML7vQQ", "call_id_b": "call_2kxhpDvknUJ444kKfJLsyA"}'
+
+The response is the completed job. result.action.action is RESTAGE_AND_RECALL because the warehouse asserts PL-9F21 staged at dock 3 and the driver found dock 3 empty. Reload the workbench on FR-1842 to see the card and the contradicted pallet_staged edge. Importing the same pair again returns the same job. A blank call id is a 422, missing credentials are a 409, and a call id CALL-E does not know is a 502.
+
+CI never needs the credentials. `tests/test_live_import.py` replays recorded copies of the two GET responses from `tests/fixtures/` through a mocked transport that fails the suite on any non-GET request. The recorded files carry no transcripts and no phone fields, so no spoken words are invented and no number can leak.
 
 ## Safety
 
@@ -121,7 +143,7 @@ Rules: consent and recording disclosure on every live call; masked fictional num
 
 ### Remaining blockers for a live FR-1842 run (account/consent, not code)
 
-The hours call above needs only a token, a base URL, a destination, and consent. A live two-party FR-1842 parity run also needs:
+The hours call above needs only a token, a base URL, a destination, and consent. Importing the two recorded FR-1842 calls needs only the token and the base URL. For CallParity to place a two-party FR-1842 parity run itself, it also needs:
 
 1. USE_FIXTURES=false, CALLE_BASE_URL, and CALLE_API_TOKEN in .env.
 2. Public HTTPS webhook URL plus CALLE_WEBHOOK_SECRET shared with CALL-E.
