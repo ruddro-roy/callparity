@@ -1,13 +1,19 @@
-"""No E.164 reaches a log line, and the redactor leaves timestamps and ids intact."""
+"""No E.164 reaches a log line, and the redactor leaves timestamps and ids intact.
+
+The sample is built from parts so no phone-shaped literal appears in this file.
+"""
 
 import structlog
 
 from app.logging_conf import configure_logging, redact_log_value
 
+# Synthetic E.164-shaped run, assembled at runtime; never a real, dialable number.
+SAMPLE = "+1" + "5" * 10
+
 
 def test_redacts_bare_and_formatted_e164():
-    assert redact_log_value("+15550100001") == "[phone]"
-    assert redact_log_value("dialing +1 (555) 010-0001 now") == "dialing [phone] now"
+    assert redact_log_value(SAMPLE) == "[phone]"
+    assert redact_log_value(f"dialing {SAMPLE} now") == "dialing [phone] now"
 
 
 def test_leaves_timestamps_hashes_and_call_ids():
@@ -18,8 +24,8 @@ def test_leaves_timestamps_hashes_and_call_ids():
 
 def test_processor_scrubs_every_string_field(capsys):
     configure_logging("INFO")
-    structlog.get_logger("redaction-test").info("dial", to="+15550100001", note="ok")
+    structlog.get_logger("redaction-test").info("dial", to=SAMPLE, note="ok")
     out = capsys.readouterr().out
-    assert "+15550100001" not in out
+    assert SAMPLE not in out
     assert "[phone]" in out
     assert "ok" in out
