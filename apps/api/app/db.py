@@ -25,7 +25,22 @@ def get_engine():
 
 def init_db() -> None:
     engine = get_engine()
+    if engine.dialect.name != "sqlite":
+        raise RuntimeError("init_db only supports the local SQLite schema")
     Base.metadata.create_all(bind=engine)
+
+
+def prepare_database() -> None:
+    engine = get_engine()
+    if engine.dialect.name == "sqlite":
+        init_db()
+        return
+    if engine.dialect.name != "postgresql":
+        raise RuntimeError(f"unsupported database dialect: {engine.dialect.name}")
+
+    from app.migrations import run_migrations
+
+    run_migrations(engine)
 
 
 def reset_engine() -> None:

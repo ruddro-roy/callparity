@@ -19,6 +19,10 @@ Same loop for freight, prior-auth, construction materials, or insurance suppleme
     cp .env.example .env
     docker compose up -d --build
 
+Compose runs the checked-in Alembic revisions before the API starts. The API also upgrades
+Postgres to the sole migration head on startup, so non-compose deployments follow the same
+path. An existing unversioned schema is adopted only when it matches the ORM exactly.
+
 - Workbench: http://localhost:3000
 - Health: http://localhost:8000/healthz. Readiness: http://localhost:8000/readyz (200 when the DB answers, else 503)
 - Seeded tickets: **FR-1842** (contradiction), **FR-1900** (control / CONFIRMED), **FR-1888** (Party B voicemail / UNREACHABLE)
@@ -43,7 +47,7 @@ If Docker is not installed, use the local path below.
     uvicorn app.main:app --app-dir apps/api --host 127.0.0.1 --port 8000
     pytest -q
 
-Vite in apps/web proxies /v1 to 127.0.0.1:8000 (`npm install && npm run dev`). Seed is idempotent.
+Vite in apps/web proxies /v1 to 127.0.0.1:8000 (`npm install && npm run dev`). Seed is idempotent. The local SQLite and pytest paths keep the lightweight `create_all` setup; Postgres uses Alembic.
 
 ## Architecture
 
@@ -76,7 +80,7 @@ The planner also generates the naive recap a follow-up bot would ask ("Can you c
 
 **Idea (tie-break 2).** Cross-call refutation: hypotheses from A, minimum observable questions for B, disclosure budget, structural leak check. The second call is a test of the first. Merged into awesome-phone-call-agents as [#220](https://github.com/CALLE-AI/awesome-phone-call-agents/pull/220).
 
-**Implementation (tie-break 3).** FastAPI, Pydantic, fixture + live adapters behind one port, mocked wire-format tests for POST /v1/calls, HMAC-optional webhook (fail closed), a shared operator token on every mutating route, an import audit trail, phone redaction in logs, authorization-based idempotency, structured JSON logs, SSE phases, 99 tests across planner, merger, idempotency, webhook, live adapter, live-record import, operator token, audit, redaction, operator script, skill, and the e2e demo loop (the compose smoke skips when the stack is down).
+**Implementation (tie-break 3).** FastAPI, Pydantic, fixture + live adapters behind one port, Alembic migrations with ORM parity tests, mocked wire-format tests for POST /v1/calls, HMAC-optional webhook (fail closed), a shared operator token on every mutating route, an import audit trail, phone redaction in logs, authorization-based idempotency, structured JSON logs, SSE phases, and offline coverage across planner, merger, idempotency, webhook, live adapter, live-record import, operator token, audit, redaction, operator script, skill, and the e2e demo loop (the compose smoke skips when the stack is down).
 
 **Demo (tie-break 4).** One screen: A claims, refute plan with the dropped leak, B claims, action card, merged graph. DEMO_SCRIPT.md walks it in 90 seconds. Fixtures so a busy signal cannot kill the punchline.
 
@@ -164,6 +168,7 @@ The product ships and demos on fixtures. Import is the live proof path: it merge
 
     apps/web                     Vite + React + Tailwind workbench
     apps/api                     FastAPI engine
+    apps/api/alembic             Database revisions
     packages/shared              JSON Schema
     scripts/seed_demo_data.py
     scripts/live_hours_call.py   One live hours-of-operation call (operator path)
