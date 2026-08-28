@@ -25,7 +25,7 @@ Same loop for freight, prior-auth, construction materials, or insurance suppleme
 
 `USE_FIXTURES=true` is the default. Click Preview then Run parity on FR-1842. Expect pallet_staged CONTRADICTED, driver_arrived CONFIRMED, seal_recorded UNTESTED, action RESTAGE_AND_RECALL.
 
-`preview`, `parity`, and `import` require an operator token: `Authorization: Bearer $OPERATOR_TOKEN`. `healthz` and `readyz` stay public. Compose sets a documented demo token (`OPERATOR_TOKEN=callparity-demo-operator` in `.env.example`) and the workbench build bakes the same value, so the browser demo works out of the box. Replace the token for any real deployment.
+`preview`, `parity`, and `import` require an operator token: `Authorization: Bearer $OPERATOR_TOKEN`. `healthz` and `readyz` stay public. Compose sets a documented demo token (`OPERATOR_TOKEN=callparity-demo-operator` in `.env.example`) and the workbench build bakes the same value, so the browser demo works out of the box. Replace the token for any real deployment. `OPERATOR_TOKEN` also accepts several comma-separated tokens so a rotation can overlap the old and new credential with zero downtime; each token keeps its own audit fingerprint and rate bucket, and a value with an empty segment refuses to boot.
 
 If Docker is not installed, use the local path below.
 

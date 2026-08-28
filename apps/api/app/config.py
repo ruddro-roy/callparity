@@ -1,6 +1,7 @@
 from functools import lru_cache
 from typing import Literal
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 CalleMode = Literal["fixture", "live"]
@@ -22,6 +23,24 @@ class Settings(BaseSettings):
     # Mutating operator routes. 0 disables the limiter (tests / CI).
     mutating_rate_limit: int = 60
     mutating_rate_window_seconds: int = 60
+
+    @field_validator("operator_token")
+    @classmethod
+    def _reject_empty_token_segments(cls, value: str) -> str:
+        # OPERATOR_TOKEN may hold several comma-separated tokens during a
+        # rotation window. A value like "a,,b" or a lone comma is a config
+        # mistake; refuse to boot rather than silently carry an empty token.
+        if "," in value and any(not segment.strip() for segment in value.split(",")):
+            raise ValueError(
+                "OPERATOR_TOKEN segments must be non-empty; "
+                "separate rotation tokens with single commas"
+            )
+        return value
+
+    @property
+    def operator_tokens(self) -> tuple[str, ...]:
+        """Configured operator tokens: one normally, several mid-rotation."""
+        return tuple(token.strip() for token in self.operator_token.split(",") if token.strip())
 
     @property
     def calle_mode(self) -> CalleMode:
