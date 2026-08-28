@@ -21,6 +21,40 @@ from app.services.redis_client import acquire_lock
 log = structlog.get_logger("jobs")
 _in_flight: set[str] = set()
 
+# Written onto rows a dead process left behind; the workbench shows it
+# verbatim, so it must tell the operator that a fresh run is safe.
+INTERRUPTED_ERROR = (
+    "interrupted by a restart before completion; run parity again to start a fresh job"
+)
+
+_NON_TERMINAL = (JobStatus.queued.value, JobStatus.running.value)
+
+
+def reconcile_interrupted_jobs(session: Session) -> list[str]:
+    """Converge job rows orphaned by a crash or redeploy into a terminal state.
+
+    Jobs execute as background tasks that live and die with this process, so
+    at startup any row still queued or running has no owner. Left alone it
+    would replay forever as a spinning job through the idempotency lookup,
+    wedging its ticket. Each orphan becomes failed with a clear error, and
+    its idempotency key is released by suffixing the job id (unique by
+    construction, and the row keeps telling the story of what happened), so
+    a deliberate operator retry starts a fresh run under the original key.
+    Nothing re-executes automatically: in live mode that would redial humans.
+    Terminal rows are untouched, which makes a second boot a no-op.
+    """
+    orphans = session.query(JobRow).filter(JobRow.status.in_(_NON_TERMINAL)).all()
+    for row in orphans:
+        row.status = JobStatus.failed.value
+        row.error = INTERRUPTED_ERROR
+        row.phase = "failed"
+        # 90 + "#interrupted:" + 16-char job id stays within String(128).
+        row.idempotency_key = f"{row.idempotency_key[:90]}#interrupted:{row.id}"
+    session.commit()
+    if orphans:
+        log.warning("jobs_reconciled", count=len(orphans), job_ids=[row.id for row in orphans])
+    return [row.id for row in orphans]
+
 
 def _to_job(row: JobRow) -> Job:
     return Job(

@@ -57,6 +57,8 @@ Vite in apps/web proxies /v1 to 127.0.0.1:8000 (`npm install && npm run dev`). S
                                           | GraphMerger
                                           + ActionCard + SSE
 
+Jobs execute as in-process background tasks and die with the process. On startup the API reconciles rows a crash left queued or running: each becomes failed with a clear error and its idempotency key is released, so the ticket is never wedged behind a dead job and a deliberate operator retry starts a fresh run. Nothing re-executes automatically; in live mode that would redial humans.
+
 CallePort adapters: FixtureCalle when USE_FIXTURES=true; LiveCalleSdk when false (POST /v1/calls, GET /v1/calls/{id}). UI, planner, and tests never branch on the toggle except a fixture banner. GET /healthz checks Postgres, Redis, and CallePort.ping, and reports the mode. Compose uses service DNS; no localhost inside containers.
 
 Postgres schema comes from Alembic (`apps/api/alembic`). The API lifespan applies `upgrade head` before seed. A compose volume that already has the seven ORM tables from the old `create_all` path is stamped at head so existing rows stay. SQLite (local seed, pytest) still uses `create_all`; the initial revision is generated from the same ORM and is tested to match.
