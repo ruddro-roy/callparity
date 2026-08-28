@@ -3,7 +3,7 @@ from pathlib import Path
 
 from alembic import command
 from alembic.config import Config
-from sqlalchemy import create_engine, inspect
+from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.config import get_settings
@@ -12,6 +12,11 @@ from app.models.orm import Base
 # Revision id of apps/api/alembic/versions/0001_initial_schema.py, the
 # migration equivalent of the pre-Alembic create_all() schema.
 INITIAL_REVISION = "0001"
+
+# Arbitrary but fixed application-wide id for the Postgres advisory lock that
+# serializes schema migrations. Replicas booting together queue on it instead
+# of racing stamp/upgrade DDL against the same database.
+MIGRATION_LOCK_KEY = 7_214_180_042_001
 
 _engine = None
 _SessionLocal = None
@@ -49,14 +54,22 @@ def run_migrations() -> None:
     create_all() before migrations existed (stamped as the initial revision,
     then upgraded), and a database already under Alembic (plain upgrade).
     Re-running after a crash or retry is a no-op once head is reached.
+
+    The whole decision plus the DDL runs on one connection inside one
+    transaction, under a Postgres advisory lock, so replicas booting at the
+    same moment serialize: the first one migrates, the rest see head and
+    no-op. The transactional lock releases itself on commit or crash.
     """
     engine = get_engine()
     cfg = _alembic_config()
-    cfg.attributes["connection"] = engine
-    inspector = inspect(engine)
-    if inspector.has_table("tickets") and not inspector.has_table("alembic_version"):
-        command.stamp(cfg, INITIAL_REVISION)
-    command.upgrade(cfg, "head")
+    with engine.begin() as conn:
+        if conn.dialect.name == "postgresql":
+            conn.execute(text("SELECT pg_advisory_xact_lock(:key)"), {"key": MIGRATION_LOCK_KEY})
+        cfg.attributes["connection"] = conn
+        inspector = inspect(conn)
+        if inspector.has_table("tickets") and not inspector.has_table("alembic_version"):
+            command.stamp(cfg, INITIAL_REVISION)
+        command.upgrade(cfg, "head")
 
 
 def prepare_database() -> None:
