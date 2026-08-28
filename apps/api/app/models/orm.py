@@ -76,3 +76,21 @@ class TranscriptPointer(Base):
     sha256: Mapped[str] = mapped_column(String(64), primary_key=True)
     ticket_id: Mapped[str] = mapped_column(String(64), index=True)
     body: Mapped[str] = mapped_column(Text)
+
+
+class ImportAuditRow(Base):
+    """Who imported which CALL-E call ids, the action emitted, and the job id.
+
+    actor is the operator-token fingerprint, never the raw token. call ids are
+    CALL-E identifiers, not phone numbers, so no dialable value is persisted.
+    """
+
+    __tablename__ = "import_audit"
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    ticket_id: Mapped[str] = mapped_column(String(64), index=True)
+    actor: Mapped[str] = mapped_column(String(64), index=True)
+    call_id_a: Mapped[str] = mapped_column(String(128))
+    call_id_b: Mapped[str] = mapped_column(String(128))
+    action: Mapped[str] = mapped_column(String(64))
+    job_id: Mapped[str] = mapped_column(String(64), index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)

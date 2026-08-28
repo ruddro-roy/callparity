@@ -7,12 +7,15 @@ from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException, 
 from fastapi.responses import JSONResponse, StreamingResponse
 from sqlalchemy.orm import Session
 
+import uuid
+
 from app.db import get_session
 from app.deps import get_calle, get_live_reader
-from app.models.orm import TicketRow, TranscriptPointer
+from app.models.orm import ImportAuditRow, TicketRow, TranscriptPointer
 from app.models.schemas import Job, ParityImportRequest, Ticket, TicketCreate
 from app.ports.calle import CallePort, RunView
 from app.ports.live import CalleApiError
+from app.security import require_operator
 from app.services.events import encode, snapshot
 from app.services.extractor import extract_claims
 from app.services.idempotency import sha256_text
@@ -70,6 +73,7 @@ def start_parity(
     session: Session = Depends(get_session),
     calle: CallePort = Depends(get_calle),
     idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
+    _actor: str = Depends(require_operator),
 ) -> JSONResponse:
     if not session.get(TicketRow, ticket_id):
         raise HTTPException(404, "ticket not found")
@@ -87,6 +91,7 @@ def import_parity(
     payload: ParityImportRequest,
     session: Session = Depends(get_session),
     reader: CallePort = Depends(get_live_reader),
+    actor: str = Depends(require_operator),
 ) -> Job:
     """Run parity on two existing CALL-E call records. Never places a call."""
     row = session.get(TicketRow, ticket_id)
@@ -96,17 +101,33 @@ def import_parity(
         if not party.get("consent"):
             raise HTTPException(403, f"consent required for party {party.get('role')}")
     try:
-        return import_parity_from_calls(
+        job = import_parity_from_calls(
             session, ticket_id, payload.call_id_a, payload.call_id_b, reader
         )
     except CalleApiError as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
     except RuntimeError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
+    session.add(
+        ImportAuditRow(
+            id=f"aud_{uuid.uuid4().hex[:12]}",
+            ticket_id=ticket_id,
+            actor=actor,
+            call_id_a=payload.call_id_a,
+            call_id_b=payload.call_id_b,
+            action=(job.result or {}).get("action", {}).get("action", ""),
+            job_id=job.id,
+        )
+    )
+    return job
 
 
 @router.post("/tickets/{ticket_id}/preview")
-def preview_parity(ticket_id: str, session: Session = Depends(get_session)) -> dict:
+def preview_parity(
+    ticket_id: str,
+    session: Session = Depends(get_session),
+    _actor: str = Depends(require_operator),
+) -> dict:
     row = session.get(TicketRow, ticket_id)
     if not row:
         raise HTTPException(404, "ticket not found")
