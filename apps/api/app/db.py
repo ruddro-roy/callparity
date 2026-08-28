@@ -24,8 +24,23 @@ def get_engine():
 
 
 def init_db() -> None:
+    """Create ORM tables in place. SQLite/local and pytest use this path."""
     engine = get_engine()
     Base.metadata.create_all(bind=engine)
+
+
+def prepare_schema() -> None:
+    """Postgres: Alembic upgrade (or stamp a complete pre-migration schema).
+
+    SQLite and any other URL keep create_all so offline tests and the local
+    seed path stay fast and do not require a migration runner.
+    """
+    from app.migrate import apply_migrations, uses_alembic
+
+    if uses_alembic(get_settings().database_url):
+        apply_migrations()
+        return
+    init_db()
 
 
 def reset_engine() -> None:

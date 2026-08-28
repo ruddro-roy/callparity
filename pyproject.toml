@@ -19,3 +19,4 @@ ignore = ["UP042"]
 # These scripts bootstrap sys.path before importing app modules.
 "scripts/seed_demo_data.py" = ["E402"]
 "scripts/live_hours_call.py" = ["E402"]
+"apps/api/alembic/env.py" = ["E402"]
