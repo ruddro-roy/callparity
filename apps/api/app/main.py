@@ -10,6 +10,7 @@ from app.db import prepare_schema, session_factory
 from app.logging_conf import configure_logging
 from app.models.orm import TicketRow
 from app.routers import health, jobs, tickets
+from app.services.jobs import reconcile_interrupted_jobs
 
 
 def _maybe_seed() -> None:
@@ -39,6 +40,8 @@ async def lifespan(_: FastAPI):
     configure_logging(settings.log_level)
     prepare_schema()
     _maybe_seed()
+    with session_factory()() as session:
+        reconcile_interrupted_jobs(session)
     yield
 
 
