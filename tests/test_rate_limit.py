@@ -119,6 +119,44 @@ def test_invalid_tokens_fall_back_to_client_ip_bucket(client, monkeypatch):
     assert client.post("/v1/tickets/FR-1842/preview").status_code == 200
 
 
+def test_unauthenticated_flood_is_metered_by_ip(client, monkeypatch):
+    monkeypatch.setenv("MUTATING_RATE_LIMIT", "2")
+    monkeypatch.setenv("MUTATING_RATE_WINDOW_SECONDS", "60")
+    get_settings.cache_clear()
+    reset_rate_limiter()
+    for _ in range(2):
+        res = client.post("/v1/tickets/FR-1842/preview", headers={"Authorization": ""})
+        assert res.status_code == 401
+    res = client.post("/v1/tickets/FR-1842/preview", headers={"Authorization": ""})
+    assert res.status_code == 429
+    assert res.json()["detail"] == "rate limit exceeded; retry later"
+    assert int(res.headers["Retry-After"]) >= 1
+
+
+def test_forged_token_draws_from_ip_not_operator_budget(client, monkeypatch):
+    monkeypatch.setenv("MUTATING_RATE_LIMIT", "2")
+    get_settings.cache_clear()
+    reset_rate_limiter()
+    forged = {"Authorization": "Bearer forged-operator-token"}
+    for _ in range(2):
+        assert client.post("/v1/tickets/FR-1842/preview", headers=forged).status_code == 401
+    assert client.post("/v1/tickets/FR-1842/preview", headers=forged).status_code == 429
+    # The forged flood exhausted only the IP bucket; the real operator's
+    # budget is intact and runs to its own limit.
+    assert client.post("/v1/tickets/FR-1842/preview").status_code == 200
+    assert client.post("/v1/tickets/FR-1842/preview").status_code == 200
+    assert client.post("/v1/tickets/FR-1842/preview").status_code == 429
+
+
+def test_unauthenticated_stays_401_when_limit_is_zero(client, monkeypatch):
+    monkeypatch.setenv("MUTATING_RATE_LIMIT", "0")
+    get_settings.cache_clear()
+    reset_rate_limiter()
+    for _ in range(6):
+        res = client.post("/v1/tickets/FR-1842/preview", headers={"Authorization": ""})
+        assert res.status_code == 401
+
+
 def test_check_mutating_rate_uses_settings(monkeypatch):
     monkeypatch.setenv("MUTATING_RATE_LIMIT", "1")
     monkeypatch.setenv("MUTATING_RATE_WINDOW_SECONDS", "60")

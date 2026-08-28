@@ -116,6 +116,14 @@ def require_operator_within_rate(
     authorization: str | None = Header(default=None),
     x_operator_token: str | None = Header(default=None, alias="X-Operator-Token"),
 ) -> str:
+    """Meter first, then authenticate.
+
+    A valid operator draws from the op bucket keyed by token fingerprint. A
+    missing or forged token is metered against the client IP before the 401
+    goes out, so an unauthenticated flood is answered with 429 and
+    Retry-After instead of unmetered 401s, and forged-token spam draws from
+    the IP bucket rather than starving the real operator's budget.
+    """
     host = request.client.host if request.client else None
     try:
         actor = require_operator(authorization, x_operator_token)
