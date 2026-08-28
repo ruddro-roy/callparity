@@ -39,6 +39,7 @@ services:
       OPERATOR_TOKEN: ${OPERATOR_TOKEN:-callparity-demo-operator}
       REDIS_OPTIONAL: "false"
       SEED_ON_STARTUP: "true"
+      RATE_LIMIT_PER_MINUTE: ${RATE_LIMIT_PER_MINUTE:-60}
     depends_on:
       postgres:
         condition: service_healthy

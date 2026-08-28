@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from app.db import get_session
 from app.models.orm import JobRow
 from app.models.schemas import Job, JobStatus
+from app.ratelimit import rate_limited
 from app.security import require_operator
 
 router = APIRouter(prefix="/v1")
@@ -30,7 +31,9 @@ def get_job(job_id: str, session: Session = Depends(get_session)) -> Job:
     return _job(row)
 
 
-@router.post("/jobs/{job_id}/cancel", response_model=Job)
+# The limiter is declared before require_operator so it meters even
+# unauthenticated floods by client IP.
+@router.post("/jobs/{job_id}/cancel", response_model=Job, dependencies=[Depends(rate_limited)])
 def cancel_job(
     job_id: str,
     session: Session = Depends(get_session),

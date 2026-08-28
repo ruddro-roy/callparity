@@ -27,6 +27,8 @@ Same loop for freight, prior-auth, construction materials, or insurance suppleme
 
 `preview`, `parity`, and `import` require an operator token: `Authorization: Bearer $OPERATOR_TOKEN`. `healthz` and `readyz` stay public. Compose sets a documented demo token (`OPERATOR_TOKEN=callparity-demo-operator` in `.env.example`) and the workbench build bakes the same value, so the browser demo works out of the box. Replace the token for any real deployment.
 
+The five mutating routes (preview, parity, import, create-ticket, cancel-job) share a fixed-window budget of `RATE_LIMIT_PER_MINUTE` requests (default 60), keyed by operator fingerprint and falling back to client IP for requests without the valid token. Over budget is 429 with a `Retry-After` header. `healthz` and `readyz` stay unlimited.
+
 If Docker is not installed, use the local path below.
 
 ## Quickstart (local, no Docker)

@@ -1,6 +1,7 @@
 from functools import lru_cache
 from typing import Literal
 
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 CalleMode = Literal["fixture", "live"]
@@ -19,6 +20,11 @@ class Settings(BaseSettings):
     calle_api_token: str = ""
     calle_webhook_secret: str = ""
     operator_token: str = ""
+    # Budget for the mutating routes, per operator fingerprint (or client IP
+    # when no valid token is presented). There is no off switch: a value that
+    # cannot limit (zero, negative, garbage) refuses to boot. Tests set it
+    # effectively unlimited instead.
+    rate_limit_per_minute: int = Field(default=60, ge=1)
 
     @property
     def calle_mode(self) -> CalleMode:

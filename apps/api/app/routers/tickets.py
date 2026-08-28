@@ -13,6 +13,7 @@ from app.models.orm import ImportAuditRow, TicketRow, TranscriptPointer
 from app.models.schemas import Job, ParityImportRequest, Ticket, TicketCreate
 from app.ports.calle import CallePort, RunView
 from app.ports.live import CalleApiError
+from app.ratelimit import rate_limited
 from app.security import require_operator
 from app.services.events import encode, snapshot
 from app.services.extractor import extract_claims
@@ -24,7 +25,9 @@ from app.services.planner import compile_refutation
 router = APIRouter(prefix="/v1")
 
 
-@router.post("/tickets", status_code=201)
+# dependencies=[rate_limited] on the mutating routes runs the limiter before
+# require_operator, so unauthenticated floods are IP-limited, not just 401ed.
+@router.post("/tickets", status_code=201, dependencies=[Depends(rate_limited)])
 def create_ticket(
     payload: TicketCreate,
     session: Session = Depends(get_session),
@@ -68,7 +71,7 @@ def get_ticket(ticket_id: str, session: Session = Depends(get_session)) -> dict:
     }
 
 
-@router.post("/tickets/{ticket_id}/parity")
+@router.post("/tickets/{ticket_id}/parity", dependencies=[Depends(rate_limited)])
 def start_parity(
     ticket_id: str,
     background: BackgroundTasks,
@@ -87,7 +90,11 @@ def start_parity(
     return JSONResponse(status_code=202, content=job.model_dump(mode="json"))
 
 
-@router.post("/tickets/{ticket_id}/parity/import", response_model=Job)
+@router.post(
+    "/tickets/{ticket_id}/parity/import",
+    response_model=Job,
+    dependencies=[Depends(rate_limited)],
+)
 def import_parity(
     ticket_id: str,
     payload: ParityImportRequest,
@@ -124,7 +131,7 @@ def import_parity(
     return job
 
 
-@router.post("/tickets/{ticket_id}/preview")
+@router.post("/tickets/{ticket_id}/preview", dependencies=[Depends(rate_limited)])
 def preview_parity(
     ticket_id: str,
     session: Session = Depends(get_session),
