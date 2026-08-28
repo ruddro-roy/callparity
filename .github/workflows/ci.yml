@@ -33,7 +33,7 @@ jobs:
           cache: pip
           cache-dependency-path: apps/api/requirements.txt
       - name: Install dependencies
-        run: pip install -r apps/api/requirements.txt pytest ruff
+        run: pip install -r apps/api/requirements.txt pytest ruff hypothesis
       - name: Lint
         run: ruff check .
       - name: Tests
