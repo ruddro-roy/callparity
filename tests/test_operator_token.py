@@ -44,6 +44,19 @@ def test_valid_token_allows_parity(client):
     assert res.status_code == 202
 
 
+def test_cancel_job_without_token_is_401(client):
+    assert _anon().post("/v1/jobs/whatever/cancel").status_code == 401
+
+
+def test_cancel_job_with_token_reaches_handler(client):
+    # Gate passes, then the handler 404s for the unknown job id.
+    assert client.post("/v1/jobs/does-not-exist/cancel").status_code == 404
+
+
+def test_create_ticket_without_token_is_401(client):
+    assert _anon().post("/v1/tickets", json={}).status_code == 401
+
+
 def test_health_and_ready_are_public(client):
     anon = _anon()
     assert anon.get("/healthz").status_code == 200

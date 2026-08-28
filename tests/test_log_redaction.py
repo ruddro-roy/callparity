@@ -22,6 +22,14 @@ def test_leaves_timestamps_hashes_and_call_ids():
     assert redact_log_value(18000) == 18000
 
 
+def test_redacts_nested_dicts_and_lists():
+    nested = {"parties": [{"phone": SAMPLE}, {"phone": "clean"}], "note": "ok"}
+    red = redact_log_value(nested)
+    assert red["parties"][0]["phone"] == "[phone]"
+    assert red["parties"][1]["phone"] == "clean"
+    assert red["note"] == "ok"
+
+
 def test_processor_scrubs_every_string_field(capsys):
     configure_logging("INFO")
     structlog.get_logger("redaction-test").info("dial", to=SAMPLE, note="ok")

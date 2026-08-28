@@ -17,8 +17,13 @@ def mask_e164(value: str) -> str:
 
 
 def redact_log_value(value: Any) -> Any:
+    """Recursively scrub E.164-shaped runs from strings, nested dicts, and lists."""
     if isinstance(value, str):
         return _LOG_PHONE.sub("[phone]", value)
+    if isinstance(value, dict):
+        return {k: redact_log_value(v) for k, v in value.items()}
+    if isinstance(value, (list, tuple)):
+        return type(value)(redact_log_value(v) for v in value)
     return value
 
 

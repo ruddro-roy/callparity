@@ -27,7 +27,11 @@ router = APIRouter(prefix="/v1")
 
 
 @router.post("/tickets", status_code=201)
-def create_ticket(payload: TicketCreate, session: Session = Depends(get_session)) -> Ticket:
+def create_ticket(
+    payload: TicketCreate,
+    session: Session = Depends(get_session),
+    _actor: str = Depends(require_operator),
+) -> Ticket:
     if session.get(TicketRow, payload.id):
         raise HTTPException(409, "ticket exists")
     session.add(

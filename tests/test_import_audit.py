@@ -38,4 +38,5 @@ def test_audit_never_stores_the_raw_token(client):
     with reader_override(recorded_get_transport({})):
         client.post("/v1/tickets/FR-1842/parity/import", json=IMPORT_BODY)
     for row in _audit_rows():
-        assert "test-operator-token" not in row.actor
+        for column in (row.actor, row.call_id_a, row.call_id_b, row.action, row.job_id):
+            assert "test-operator-token" not in column

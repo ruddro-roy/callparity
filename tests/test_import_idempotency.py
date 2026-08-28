@@ -1,8 +1,9 @@
 """Import converges regardless of a crash: reconcile if incomplete, replay if done.
 
-A crash mid-import (Party B unreachable) rolls the transaction back and persists
-no card, so a retry re-fetches both records. Once a job is completed, a later
-import replays the stored job and fetches nothing.
+A crash mid-import (Party B unreachable) leaves no card, because import writes
+nothing until both records are in hand and the request-level rollback discards
+the partial work, so a retry re-fetches both records. Once a job is completed, a
+later import replays the stored job and fetches nothing.
 """
 
 import json

@@ -31,6 +31,12 @@ def require_operator(
     """
     configured = get_settings().operator_token.strip()
     provided = _bearer(authorization, x_operator_token)
-    if not configured or not provided or not hmac.compare_digest(configured, provided):
+    # Compare on bytes so a non-ASCII header value fails closed with 401 rather
+    # than raising inside compare_digest.
+    if (
+        not configured
+        or not provided
+        or not hmac.compare_digest(configured.encode("utf-8"), provided.encode("utf-8"))
+    ):
         raise HTTPException(status_code=401, detail="operator token required")
     return actor_fingerprint(provided)
