@@ -5,7 +5,18 @@ This cut opens on the product result. A stranger sees two CALL-E call IDs, click
 
 Keep v8 public at
 [YouTube](https://www.youtube.com/watch?v=mLR6RTOi64c). Do not upload v9 or edit
-the submission page until Ruddro watches the new master and says ship.
+the submission page until Ruddro watches the new master and says ship. Do not
+merge this branch.
+
+The fixed scenario is ticket `FR-1842`. Pallet `PL-9F21` carries insulin, and
+the delay costs $18,000 per hour. The warehouse record says that the pallet was
+staged at dock 3 at 06:40. The driver record says that the driver arrived, found
+dock 3 empty, and did not see the pallet. The driver bot ended early, but the
+denial stands.
+
+Import reads only the two stored CALL-E records with GET requests. It never
+dials. Re-import returns the stored job. Do not add transcript quotes or invent
+spoken words.
 
 ## Prepare the take
 
@@ -89,7 +100,8 @@ Use one ffmpeg filter graph. Do not use a concat demuxer.
 
 Keep titles at 72px and body copy at 42px. Keep every title inside a 10 percent
 safe margin. Encode progressive Rec.709 video as H.264 High with CRF 16 or 17.
-Add `faststart`.
+Add `faststart`. Make `callparity-watch-me-v9.mp4` a player-safe remux of the
+commercial master.
 
 Deliver 48 kHz stereo audio at -14 LUFS. Keep the true peak at or below
 -1.0 dBTP. Use no music unless the bed stays below -24 LUFS.
