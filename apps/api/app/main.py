@@ -9,6 +9,7 @@ from app.config import get_settings
 from app.db import prepare_schema, session_factory
 from app.logging_conf import configure_logging
 from app.models.orm import TicketRow
+from app.request_id import RequestIdMiddleware, request_id_exception_handler
 from app.routers import health, jobs, tickets
 
 
@@ -43,12 +44,17 @@ async def lifespan(_: FastAPI):
 
 
 app = FastAPI(title="CallParity API", version="0.2.0", lifespan=lifespan)
+app.add_exception_handler(Exception, request_id_exception_handler)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["X-Request-ID"],
 )
+# Last added runs first: request id wraps CORS so every response, including
+# preflight, carries X-Request-ID and one access line.
+app.add_middleware(RequestIdMiddleware)
 app.include_router(health.router)
 app.include_router(tickets.router)
 app.include_router(jobs.router)
