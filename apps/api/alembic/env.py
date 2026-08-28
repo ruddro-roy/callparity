@@ -42,7 +42,25 @@ def run_migrations_offline() -> None:
         context.run_migrations()
 
 
+def _run_with_connection(connection) -> None:
+    context.configure(
+        connection=connection,
+        target_metadata=target_metadata,
+        compare_type=True,
+    )
+    with context.begin_transaction():
+        context.run_migrations()
+
+
 def run_migrations_online() -> None:
+    # app.migrate shares one connection (and its transaction, holding the
+    # Postgres advisory lock) so inspection and DDL cannot interleave across
+    # processes. Standalone `alembic upgrade` still builds its own engine.
+    shared = context.config.attributes.get("connection")
+    if shared is not None:
+        _run_with_connection(shared)
+        return
+
     url = _database_url()
     connectable = create_engine(
         url,
@@ -51,13 +69,7 @@ def run_migrations_online() -> None:
         future=True,
     )
     with connectable.connect() as connection:
-        context.configure(
-            connection=connection,
-            target_metadata=target_metadata,
-            compare_type=True,
-        )
-        with context.begin_transaction():
-            context.run_migrations()
+        _run_with_connection(connection)
     connectable.dispose()
 
 
