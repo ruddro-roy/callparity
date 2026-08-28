@@ -1,9 +1,10 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Response
 from sqlalchemy import text
 
 from app.config import get_settings
 from app.db import session_factory
 from app.deps import get_calle
+from app.metrics import render_metrics
 from app.models.schemas import Healthz
 from app.services.redis_client import ping_redis
 
@@ -35,3 +36,12 @@ def readyz() -> dict:
     if not _db_up():
         raise HTTPException(status_code=503, detail="database unavailable")
     return {"status": "ready"}
+
+
+@router.get("/metrics")
+def metrics() -> Response:
+    """Prometheus text exposition. Counts and fixed labels only, like healthz."""
+    SessionLocal = session_factory()
+    with SessionLocal() as session:
+        body = render_metrics(session)
+    return Response(content=body, media_type="text/plain; version=0.0.4; charset=utf-8")

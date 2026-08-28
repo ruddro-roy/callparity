@@ -9,6 +9,7 @@ from starlette.responses import PlainTextResponse
 from app.config import get_settings
 from app.db import prepare_schema, session_factory
 from app.logging_conf import configure_logging
+from app.metrics import RequestCounterMiddleware
 from app.models.orm import TicketRow
 from app.request_id import HEADER, RequestIdMiddleware, resolve_request_id
 from app.routers import health, jobs, tickets
@@ -70,6 +71,9 @@ app.add_middleware(
 # Last added runs first: request id wraps CORS so every response, including
 # preflight, carries X-Request-ID and one access line.
 app.add_middleware(RequestIdMiddleware)
+# Outermost so the counter sees every response that leaves the server,
+# preflight and error responses included.
+app.add_middleware(RequestCounterMiddleware)
 app.include_router(health.router)
 app.include_router(tickets.router)
 app.include_router(jobs.router)
