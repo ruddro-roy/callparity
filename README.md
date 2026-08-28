@@ -20,10 +20,12 @@ Same loop for freight, prior-auth, construction materials, or insurance suppleme
     docker compose up -d --build
 
 - Workbench: http://localhost:3000
-- Health: http://localhost:8000/healthz
+- Health: http://localhost:8000/healthz. Readiness: http://localhost:8000/readyz (200 when the DB answers, else 503)
 - Seeded tickets: **FR-1842** (contradiction), **FR-1900** (control / CONFIRMED), **FR-1888** (Party B voicemail / UNREACHABLE)
 
 `USE_FIXTURES=true` is the default. Click Preview then Run parity on FR-1842. Expect pallet_staged CONTRADICTED, driver_arrived CONFIRMED, seal_recorded UNTESTED, action RESTAGE_AND_RECALL.
+
+`preview`, `parity`, and `import` require an operator token: `Authorization: Bearer $OPERATOR_TOKEN`. `healthz` and `readyz` stay public. Compose sets a documented demo token (`OPERATOR_TOKEN=callparity-demo-operator` in `.env.example`) and the workbench build bakes the same value, so the browser demo works out of the box. Replace the token for any real deployment.
 
 If Docker is not installed, use the local path below.
 
@@ -35,6 +37,7 @@ If Docker is not installed, use the local path below.
     export DATABASE_URL=sqlite+pysqlite:///./callparity.db
     export REDIS_OPTIONAL=true
     export USE_FIXTURES=true
+    export OPERATOR_TOKEN=callparity-demo-operator
     export PYTHONPATH=apps/api
     python scripts/seed_demo_data.py
     uvicorn app.main:app --app-dir apps/api --host 127.0.0.1 --port 8000
@@ -73,7 +76,7 @@ The planner also generates the naive recap a follow-up bot would ask ("Can you c
 
 **Idea (tie-break 2).** Cross-call refutation: hypotheses from A, minimum observable questions for B, disclosure budget, structural leak check. The second call is a test of the first. Merged into awesome-phone-call-agents as [#220](https://github.com/CALLE-AI/awesome-phone-call-agents/pull/220).
 
-**Implementation (tie-break 3).** FastAPI, Pydantic, fixture + live adapters behind one port, mocked wire-format tests for POST /v1/calls, HMAC-optional webhook (fail closed), authorization-based idempotency, structured JSON logs, SSE phases, 83 tests across planner, merger, idempotency, webhook, live adapter, live-record import, operator script, skill, and the e2e demo loop (the compose smoke skips when the stack is down).
+**Implementation (tie-break 3).** FastAPI, Pydantic, fixture + live adapters behind one port, mocked wire-format tests for POST /v1/calls, HMAC-optional webhook (fail closed), a shared operator token on every mutating route, an import audit trail, phone redaction in logs, authorization-based idempotency, structured JSON logs, SSE phases, 99 tests across planner, merger, idempotency, webhook, live adapter, live-record import, operator token, audit, redaction, operator script, skill, and the e2e demo loop (the compose smoke skips when the stack is down).
 
 **Demo (tie-break 4).** One screen: A claims, refute plan with the dropped leak, B claims, action card, merged graph. DEMO_SCRIPT.md walks it in 90 seconds. Fixtures so a busy signal cannot kill the punchline.
 
@@ -112,8 +115,11 @@ POST /v1/tickets/FR-1842/parity/import fetches both records with GET /v1/calls/{
     export CALLE_API_TOKEN=  # token of the workspace that placed the calls
     docker compose up -d --build
     curl -s -X POST http://localhost:8000/v1/tickets/FR-1842/parity/import \
+      -H "Authorization: Bearer ${OPERATOR_TOKEN:-callparity-demo-operator}" \
       -H 'Content-Type: application/json' \
       -d '{"call_id_a": "call_vzro922bOACJjf19ML7vQQ", "call_id_b": "call_2kxhpDvknUJ444kKfJLsyA"}'
+
+The workbench does the same thing behind the FR-1842 "Import live records" button: it locks the two call ids, sends the operator token, and never dials.
 
 The response is the completed job. result.action.action is RESTAGE_AND_RECALL because the warehouse asserts PL-9F21 staged at dock 3 and the driver found dock 3 empty. Reload the workbench on FR-1842 to see the card and the contradicted pallet_staged edge. Importing the same pair again returns the same job. A blank call id is a 422, missing credentials are a 409, and a call id CALL-E does not know is a 502.
 
@@ -121,10 +127,12 @@ CI never needs the credentials. `tests/test_live_import.py` replays recorded cop
 
 ## Safety
 
+- preview, parity, and import require the operator token (401 otherwise). The compare is constant-time and fails closed. healthz and readyz stay public.
+- Every import writes an audit row: the operator-token fingerprint (never the raw token), both call ids, the action, and the job id.
 - No call without stored consent on that party (403 otherwise).
 - The hours script refuses to dial without CALLE_CONSENT=yes, and its errors never echo the destination or the token.
 - Preview is the default path when live keys are missing; USE_FIXTURES=true never dials.
-- E.164 values are masked in logs and in the workbench (+1555***0001).
+- E.164 values are masked in logs and in the workbench (+1555***0001). A log processor also scrubs any E.164-shaped run from every field as a backstop.
 - Structured logging only (structlog JSON). No raw print in the API.
 - Insulin is a cargo SKU, not a patient conversation. The leak check refuses clinical drift.
 - If CALLE_WEBHOOK_SECRET is set, missing or wrong HMAC is 401.
@@ -141,16 +149,16 @@ Developer API used by LiveCalleSdk, per [docs.heycall-e.com/calls](https://docs.
 
 Rules: consent and recording disclosure on every live call; masked fictional numbers in seeds; dry-run and fixture mode by default; fail-closed dispositions; host owns scheduling, CALL-E owns one-shot calls.
 
-### Remaining blockers for a live FR-1842 run (account/consent, not code)
+### Live two-party parity run: account and consent prerequisites
 
-The hours call above needs only a token, a base URL, a destination, and consent. Importing the two recorded FR-1842 calls needs only the token and the base URL. For CallParity to place a two-party FR-1842 parity run itself, it also needs:
+The import path and the hours script both run on account access alone. Placing a fresh two-party FR-1842 parity call is a different operation, and it depends on an operator setting up a CALL-E account and getting consent, not on more code:
 
 1. USE_FIXTURES=false, CALLE_BASE_URL, and CALLE_API_TOKEN in .env.
-2. Public HTTPS webhook URL plus CALLE_WEBHOOK_SECRET shared with CALL-E.
-3. Real E.164 numbers with stored consent on both parties (seeds use +1555 fictionals).
-4. Carrier / workspace credits and a from-number allocated on the CALL-E side.
+2. A public HTTPS webhook URL and CALLE_WEBHOOK_SECRET shared with CALL-E.
+3. Stored consent from both parties on real E.164 numbers (seeds use +1555 fictionals).
+4. Carrier and workspace credits on the CALL-E side.
 
-Until those exist, ship and demo on fixtures. The live adapter refuses to plan, run, or poll while CALLE_API_TOKEN or CALLE_BASE_URL is missing, and names the variable to set.
+The product ships and demos on fixtures. Import is the live proof path: it merges two calls a human already answered. The live adapter refuses to plan, run, or poll while CALLE_API_TOKEN or CALLE_BASE_URL is missing, and names the variable to set.
 
 ## Layout
 

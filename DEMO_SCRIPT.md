@@ -2,6 +2,8 @@
 
 **One line:** Two phones, one operational fact, a live contradiction graph.
 
+**Recut note:** the submission tape stays v8 (https://www.youtube.com/watch?v=mLR6RTOi64c). Recut only if a single continuous pass shows the live import and the RESTAGE card in the first 20 seconds a stranger would feel. The FR-1842 "Import live records" control now makes that pass possible, and the beat below scripts it. No recut is uploaded from this PR.
+
 **Recording setup:** `docker compose up -d --build`, then a 1920x1080 screen capture of http://localhost:3000 at 100% zoom. The whole demo is the running workbench. No slides, no stills. Fixtures are on (`USE_FIXTURES=true`), so the punchline never depends on a live carrier; the amber banner says so on screen.
 
 **Seeded scenario:** Ticket `FR-1842`. Pallet `PL-9F21`, refrigerated insulin cartons as cargo. Warehouse (Party A) says it left Dock 3 at 06:40. Driver (Party B) says dock 3 was empty and they were waved off. SLA burn: $18k/hour of delayed cold-chain.
@@ -40,6 +42,15 @@
 
 ---
 
+## Alt open, live import in one pass (recut only)
+
+**Do:** On FR-1842, click **Import live records** in the Live import bar. The action card flips to RESTAGE_AND_RECALL and the graph fills.
+
+**Say:**
+"These are two real CALL-E calls a human already answered, the warehouse and the driver. Import merges their records over GET, places no call, and shows no phone numbers. pallet_staged CONTRADICTED, driver_arrived CONFIRMED, one restage-and-recall card. That is the live proof path a dispatcher runs, gated behind an operator token."
+
+---
+
 ## 1:00-1:20, controls: agreement and silence
 
 **Do:** Click **FR-1900 control**, then **Run parity**. The card reads RELEASE_TRUCK. Click **FR-1888 voicemail**, then **Run parity**. The card reads HOLD_FOR_HUMAN.
@@ -54,4 +65,4 @@
 **Do:** Show the terminal: `docker compose up -d --build`, then `pytest -q` green.
 
 **Say:**
-"One compose command boots it, 73 tests cover it. The refutation planner is merged into awesome-phone-call-agents as ClaimKill, PR 220. The live adapter has placed a real CALL-E call where a person answered and gave a closing time; the FR-1842 graph you saw runs on fixtures until two consenting parties are on the line."
+"One compose command boots it, 99 tests cover it. The refutation planner is merged into awesome-phone-call-agents as ClaimKill, PR 220. The live adapter has placed a real CALL-E call where a person answered and gave a closing time; the FR-1842 graph you saw runs on fixtures until two consenting parties are on the line."
