@@ -29,6 +29,10 @@ services:
     build:
       context: .
       dockerfile: apps/api/Dockerfile
+    # On startup the API runs the Alembic migrations against Postgres before
+    # seeding (app/db.py prepare_database). A fresh pgdata volume gets the
+    # migrated schema; a volume created before migrations existed is stamped
+    # and upgraded in place, so `docker compose up` converges either way.
     environment:
       DATABASE_URL: postgresql+psycopg2://callparity:callparity@postgres:5432/callparity
       REDIS_URL: redis://redis:6379/0

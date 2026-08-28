@@ -45,6 +45,12 @@ If Docker is not installed, use the local path below.
 
 Vite in apps/web proxies /v1 to 127.0.0.1:8000 (`npm install && npm run dev`). Seed is idempotent.
 
+## Database migrations
+
+The Postgres schema is owned by Alembic (`apps/api/alembic`). On startup against Postgres the API upgrades to head before seeding: a fresh database gets the full schema, and a database created by `create_all` before migrations existed is stamped as revision `0001` and upgraded in place, so `docker compose up` converges from either state. SQLite (the local quickstart and the offline tests) keeps `create_all`; `tests/test_migrations.py` proves the two paths produce the identical schema. To migrate by hand:
+
+    DATABASE_URL=postgresql+psycopg2://... alembic -c apps/api/alembic.ini upgrade head
+
 ## Architecture
 
     UI -- POST /v1/tickets/{id}/preview --> API   (zero calls)
@@ -76,7 +82,7 @@ The planner also generates the naive recap a follow-up bot would ask ("Can you c
 
 **Idea (tie-break 2).** Cross-call refutation: hypotheses from A, minimum observable questions for B, disclosure budget, structural leak check. The second call is a test of the first. Merged into awesome-phone-call-agents as [#220](https://github.com/CALLE-AI/awesome-phone-call-agents/pull/220).
 
-**Implementation (tie-break 3).** FastAPI, Pydantic, fixture + live adapters behind one port, mocked wire-format tests for POST /v1/calls, HMAC-optional webhook (fail closed), a shared operator token on every mutating route, an import audit trail, phone redaction in logs, authorization-based idempotency, structured JSON logs, SSE phases, 99 tests across planner, merger, idempotency, webhook, live adapter, live-record import, operator token, audit, redaction, operator script, skill, and the e2e demo loop (the compose smoke skips when the stack is down).
+**Implementation (tie-break 3).** FastAPI, Pydantic, fixture + live adapters behind one port, mocked wire-format tests for POST /v1/calls, HMAC-optional webhook (fail closed), a shared operator token on every mutating route, an import audit trail, phone redaction in logs, authorization-based idempotency, structured JSON logs, SSE phases, 108 tests across planner, merger, idempotency, webhook, live adapter, live-record import, operator token, audit, redaction, schema migrations, operator script, skill, and the e2e demo loop (the compose smoke skips when the stack is down).
 
 **Demo (tie-break 4).** One screen: A claims, refute plan with the dropped leak, B claims, action card, merged graph. DEMO_SCRIPT.md walks it in 90 seconds. Fixtures so a busy signal cannot kill the punchline.
 
