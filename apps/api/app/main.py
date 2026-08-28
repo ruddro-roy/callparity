@@ -8,6 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.config import get_settings
 from app.db import init_db, session_factory
 from app.logging_conf import configure_logging
+from app.middleware import RequestContextMiddleware
 from app.models.orm import TicketRow
 from app.routers import health, jobs, tickets
 
@@ -49,6 +50,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+# Added after CORS so it wraps outermost: every response, including CORS
+# preflights and error replies, carries X-Request-ID and gets one log line.
+app.add_middleware(RequestContextMiddleware)
 app.include_router(health.router)
 app.include_router(tickets.router)
 app.include_router(jobs.router)

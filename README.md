@@ -59,6 +59,8 @@ Vite in apps/web proxies /v1 to 127.0.0.1:8000 (`npm install && npm run dev`). S
 
 CallePort adapters: FixtureCalle when USE_FIXTURES=true; LiveCalleSdk when false (POST /v1/calls, GET /v1/calls/{id}). UI, planner, and tests never branch on the toggle except a fixture banner. GET /healthz checks Postgres, Redis, and CallePort.ping, and reports the mode. Compose uses service DNS; no localhost inside containers.
 
+Every response carries `X-Request-ID`: the client's value when it is a bounded log-safe token, a generated id otherwise. The API writes one structured JSON line per request (method, path, status, latency_ms) tagged with that id, and the same id is bound onto everything the handler logs. Bodies, query strings, and headers never enter the line, and the phone redactor scrubs it like any other event.
+
 ## The leak check is structural, not a token list
 
 The planner never forwards Party A's accusation. A candidate question for Party B is dropped when B could recover what A asserted from it:
