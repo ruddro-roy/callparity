@@ -1,68 +1,117 @@
-# CallParity, 90-second demo script
+# CallParity v9 demo script
 
-**One line:** Two phones, one operational fact, a live contradiction graph.
+This cut opens on the product result. A stranger sees two CALL-E call IDs, clicks
+**Import live records**, and reaches `RESTAGE_AND_RECALL` within 20 seconds.
 
-**Recut note:** the submission tape stays v8 (https://www.youtube.com/watch?v=mLR6RTOi64c). Recut only if a single continuous pass shows the live import and the RESTAGE card in the first 20 seconds a stranger would feel. The FR-1842 "Import live records" control now makes that pass possible, and the beat below scripts it. No recut is uploaded from this PR.
+Keep v8 public at
+[YouTube](https://www.youtube.com/watch?v=mLR6RTOi64c). Do not upload v9 or edit
+the submission page until Ruddro watches the new master and says ship.
 
-**Recording setup:** `docker compose up -d --build`, then a 1920x1080 screen capture of http://localhost:3000 at 100% zoom. The whole demo is the running workbench. No slides, no stills. Fixtures are on (`USE_FIXTURES=true`), so the punchline never depends on a live carrier; the amber banner says so on screen.
+## Prepare the take
 
-**Seeded scenario:** Ticket `FR-1842`. Pallet `PL-9F21`, refrigerated insulin cartons as cargo. Warehouse (Party A) says it left Dock 3 at 06:40. Driver (Party B) says dock 3 was empty and they were waved off. SLA burn: $18k/hour of delayed cold-chain.
+1. Run `docker compose up -d --build` from the CallParity repository.
+2. Open `http://localhost:3000` at 100 percent browser zoom.
+3. Capture one continuous 1920x1080 pass at 25 fps.
+4. Select `FR-1842` before recording.
+5. Keep the Live import bar and both call IDs readable.
+6. Keep `USE_FIXTURES=true`. The amber fixture banner may remain.
+7. Rehearse the import on the operator box. If the workbench returns 409, use
+   the existing machine secret outside the recording. Never put the secret in
+   the repository, the video, or an editor command.
+8. Do not dial, buy a number, call a person, or set `from_number`.
+9. Crop out the party contact row or cover it with an opaque overlay. The
+   workbench masks those values, but the final tape must show no phone fragments.
+10. Keep browser tools, notifications, email, faces, and country flags out of
+    frame.
 
----
+The final cut should run from 1:40 to 2:10. It must remain under 2:59.
 
-## 0:00-0:15, the problem on screen
+## Follow this shot list
 
-**Do:** Nothing yet. FR-1842 is already loaded: ticket id, the fact question, the $18k/hour SLA chip, masked party numbers, empty columns.
+| Time | Picture | Voice |
+| --- | --- | --- |
+| 0:00 to 0:04 | Open on the running `FR-1842` workbench. Keep the Live import bar, `call_vzro922bOACJjf19ML7vQQ`, and `call_2kxhpDvknUJ444kKfJLsyA` sharp. Put the cursor over **Import live records**. Click by 0:04. | Start the hook. |
+| 0:04 to 0:12 | Hold the continuous pass while the graph fills. Move the cursor to the action card as soon as it reads `RESTAGE_AND_RECALL`. | Finish the hook. Start the body. |
+| 0:12 to 0:20 | Point to `pallet_staged CONTRADICTED`, then `driver_arrived CONFIRMED`. Return to the action card. Keep both call IDs in frame. | Continue the body. |
+| 0:20 to 0:35 | Hold on `seal_recorded UNTESTED` and the human-owned action card. Keep the frame still for two seconds. | Finish the body. |
+| 0:35 to 0:58 | Click **Preview (0 calls)** only now. Frame **Dropped by leak check** and the struck question that contains dock 3 and 06:40. | Read the leak-check line. |
+| 0:58 to 1:13 | Select **FR-1900 control** and click **Run parity**. Hold when the card reads `RELEASE_TRUCK`. | Start the controls line. |
+| 1:13 to 1:28 | Select **FR-1888 voicemail** and click **Run parity**. Hold when the card reads `HOLD_FOR_HUMAN`. | Finish the controls line. |
+| 1:28 to 1:42 | Return to `FR-1842`. Hold on the two call IDs, the contradiction edges, and `RESTAGE_AND_RECALL`. | Pause, then start the closer. |
+| 1:42 to 1:52 | Add a 42px lower third for [CALLE-AI/awesome-phone-call-agents PR 220](https://github.com/CALLE-AI/awesome-phone-call-agents/pull/220). Keep the call IDs and action card readable behind it. | Finish the closer. Hold the last frame for two seconds. |
 
-**Say:**
-"This is an $18,000-an-hour cold-chain miss. The warehouse says the pallet left Dock 3. The driver says Dock 3 was empty. Nobody is lying on purpose. Email will not close this. CallParity treats the disagreement as a testable claim graph."
+Fail the cut if `RESTAGE_AND_RECALL` is not readable by 0:20. Do not use
+**Preview (0 calls)** or **Run parity** before the Import click.
 
----
+The warehouse, driver, graph, and restage cards from v8 may appear as B-roll
+after 0:20. They must not replace the live Import click. Do not restart the
+workbench during the cut.
 
-## 0:15-0:35, Preview: zero calls
+## Record this voiceover
 
-**Do:** Click **Preview (0 calls)**. Party A claims fill the left column. The refute plan fills the second column.
+Use an uncredited mild American voice. Leave short gaps so the cursor can land
+on each result.
 
-**Say:**
-"Preview compiles everything without placing a call. Party A's transcript becomes typed claims with quoted spans and confidence. Then the planner writes the second call as a test of the first: the cheapest observable questions that could falsify what A said."
+### Hook
 
-**Point at:** the "Dropped by leak check" entry. The struck-through question "Can you confirm PL-9F21 pallet staged at dock 3 and at 06:40?" with its reasons.
+"Two live CALL-E calls. Same pallet. They disagree. Import the records."
 
-**Say:**
-"This is the question a naive follow-up bot would ask. It hands the driver the warehouse's answer. The leak check drops it structurally, asserted values and polar framing, not a banned-word list. The driver never hears what the warehouse asserted."
+### Body
 
----
+"Warehouse said the pallet was on dock three. The driver said dock three was
+empty. Import is GET only. No new dial. The graph marks pallet staged
+contradicted. Driver arrived is confirmed. Seal is untested. One human-owned
+action. Restage and recall."
 
-## 0:35-1:00, Run parity: the punchline
+### Leak check
 
-**Do:** Click **Run parity**. Watch the rail status line: A planning, on the call, claims extracted; then B. Party B claims fill. The graph lights up. The action card flips.
+"CallParity refuses this question. It would hand dock three and six forty to
+the driver. The leak check strikes it before any call."
 
-**Say:**
-"Both calls run through the same CallePort that drives the live CALL-E API. Party B answers observable questions only. The merger does the confrontation: pallet_staged CONTRADICTED, driver_arrived CONFIRMED, seal UNTESTED because nobody read it. One action card: restage PL-9F21 and recall the driver. Every edge quotes the words that produced it. A human owns the card."
+### Controls
 
----
+"Agreement and silence take different paths. FR nineteen hundred releases the
+truck. FR eighteen eighty-eight reached voicemail, so CallParity holds for a
+human. Silence never counts as yes."
 
-## Alt open, live import in one pass (recut only)
+### Closer
 
-**Do:** On FR-1842, click **Import live records** in the Live import bar. The action card flips to RESTAGE_AND_RECALL and the graph fills.
+"ClaimKill is on the list. The graph is the product. Two call ids. One card."
 
-**Say:**
-"These are two real CALL-E calls a human already answered, the warehouse and the driver. Import merges their records over GET, places no call, and shows no phone numbers. pallet_staged CONTRADICTED, driver_arrived CONFIRMED, one restage-and-recall card. That is the live proof path a dispatcher runs, gated behind an operator token."
+Do not voice the original diner transcript. If the controls push the cut past
+2:10, remove both controls together. Replace them with no more than eight
+seconds of the diner result card after the restage card. The card may show
+`call_Sv3d5Dt3jj0YabV9IJZh7g`, `reached=human`, and `closing_time=11`.
 
----
+## Finish the picture and sound
 
-## 1:00-1:20, controls: agreement and silence
+Use one ffmpeg filter graph. Do not use a concat demuxer.
 
-**Do:** Click **FR-1900 control**, then **Run parity**. The card reads RELEASE_TRUCK. Click **FR-1888 voicemail**, then **Run parity**. The card reads HOLD_FOR_HUMAN.
+Keep titles at 72px and body copy at 42px. Keep every title inside a 10 percent
+safe margin. Encode progressive Rec.709 video as H.264 High with CRF 16 or 17.
+Add `faststart`.
 
-**Say:**
-"Same machinery, no contradiction: release the truck. And when the driver's phone goes to voicemail, silence is not confirmation. Unreachable holds for a human."
+Deliver 48 kHz stereo audio at -14 LUFS. Keep the true peak at or below
+-1.0 dBTP. Use no music unless the bed stays below -24 LUFS.
 
----
+The current tree collects 166 tests. Regenerate that count with
+`.venv/bin/pytest --collect-only -q`. If the tape includes test output, record
+a fresh `.venv/bin/pytest -q` run and show its actual result.
 
-## 1:20-1:30, close
+## Check the private master
 
-**Do:** Show the terminal: `docker compose up -d --build`, then `pytest -q` green.
+- Confirm that `callparity-commercial-v9.mp4` and
+  `callparity-watch-me-v9.mp4` play without a break.
+- Confirm 1920x1080 progressive video at 25 fps.
+- Confirm Rec.709 color and H.264 High.
+- Confirm -14 LUFS loudness, -1.0 dBTP true peak, and 48 kHz stereo audio.
+- Confirm that both live call IDs, the Import click, and
+  `RESTAGE_AND_RECALL` appear within 20 seconds.
+- Confirm that the tape contains no phone fragment, email address, face,
+  country flag, secret, or voice-vendor credit.
+- Record the checks in `QC-v9.txt` using the same shape as `QC-v8.txt`.
+- Keep both v9 files private until Ruddro approves the watch-me file.
 
-**Say:**
-"One compose command boots it, 99 tests cover it. The refutation planner is merged into awesome-phone-call-agents as ClaimKill, PR 220. The live adapter has placed a real CALL-E call where a person answered and gave a closing time; the FR-1842 graph you saw runs on fixtures until two consenting parties are on the line."
+`/workspace/callparity/demo/commercial/` is absent in this workspace, so the
+v9 encode, `assemble_v9.sh`, `QC-v9.txt`, and both MP4 files must be produced
+on the operator box that holds the v8 masters.
