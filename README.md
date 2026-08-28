@@ -82,7 +82,7 @@ The planner also generates the naive recap a follow-up bot would ask ("Can you c
 
 **Idea (tie-break 2).** Cross-call refutation: hypotheses from A, minimum observable questions for B, disclosure budget, structural leak check. The second call is a test of the first. Merged into awesome-phone-call-agents as [#220](https://github.com/CALLE-AI/awesome-phone-call-agents/pull/220).
 
-**Implementation (tie-break 3).** FastAPI, Pydantic, fixture + live adapters behind one port, mocked wire-format tests for POST /v1/calls, HMAC-optional webhook (fail closed), a shared operator token on every mutating route, an import audit trail, phone redaction in logs, authorization-based idempotency, structured JSON logs, SSE phases, 108 tests across planner, merger, idempotency, webhook, live adapter, live-record import, operator token, audit, redaction, schema migrations, operator script, skill, and the e2e demo loop (the compose smoke skips when the stack is down).
+**Implementation (tie-break 3).** FastAPI, Pydantic, fixture + live adapters behind one port, mocked wire-format tests for POST /v1/calls, HMAC-optional webhook (fail closed), a shared operator token on every mutating route, an import audit trail, phone redaction in logs, authorization-based idempotency, structured JSON logs, SSE phases, and an offline test suite covering planner, merger, idempotency, webhook, live adapter, live-record import, operator token, audit, redaction, schema migrations, operator script, skill, and the e2e demo loop (the compose smoke skips when the stack is down).
 
 **Demo (tie-break 4).** One screen: A claims, refute plan with the dropped leak, B claims, action card, merged graph. DEMO_SCRIPT.md walks it in 90 seconds. Fixtures so a busy signal cannot kill the punchline.
 
