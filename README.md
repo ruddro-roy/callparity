@@ -78,7 +78,7 @@ The planner also generates the naive recap a follow-up bot would ask ("Can you c
 
 **Idea (tie-break 2).** Cross-call refutation: hypotheses from A, minimum observable questions for B, disclosure budget, structural leak check. The second call is a test of the first. Merged into awesome-phone-call-agents as [#220](https://github.com/CALLE-AI/awesome-phone-call-agents/pull/220).
 
-**Implementation (tie-break 3).** FastAPI, Pydantic, fixture + live adapters behind one port, mocked wire-format tests for POST /v1/calls, HMAC-optional webhook (fail closed), a shared operator token on every mutating route, an import audit trail, phone redaction in logs, Alembic for the Postgres schema, authorization-based idempotency, structured JSON logs, SSE phases, 113 tests across planner, merger, idempotency, webhook, live adapter, live-record import, operator token, audit, redaction, migrations, operator script, skill, and the e2e demo loop (the compose smoke skips when the stack is down).
+**Implementation (tie-break 3).** FastAPI, Pydantic, fixture + live adapters behind one port, mocked wire-format tests for POST /v1/calls, HMAC-optional webhook (fail closed), a shared operator token on every mutating route, an import audit trail, phone redaction in logs, Alembic for the Postgres schema, authorization-based idempotency, structured JSON logs, SSE phases, 122 tests across planner, merger, idempotency, webhook, live adapter, live-record import, operator token, audit, redaction, migrations, request id, operator script, skill, and the e2e demo loop (the compose smoke skips when the stack is down).
 
 **Demo (tie-break 4).** One screen: A claims, refute plan with the dropped leak, B claims, action card, merged graph. DEMO_SCRIPT.md walks it in 90 seconds. Fixtures so a busy signal cannot kill the punchline.
 
@@ -135,7 +135,7 @@ CI never needs the credentials. `tests/test_live_import.py` replays recorded cop
 - The hours script refuses to dial without CALLE_CONSENT=yes, and its errors never echo the destination or the token.
 - Preview is the default path when live keys are missing; USE_FIXTURES=true never dials.
 - E.164 values are masked in logs and in the workbench (+1555***0001). A log processor also scrubs any E.164-shaped run from every field as a backstop.
-- Structured logging only (structlog JSON). No raw print in the API.
+- Structured logging only (structlog JSON). No raw print in the API. Each request gets an `X-Request-ID` (canonical UUID, echoed). One access line records method, path, status, and latency_ms. Bodies and headers stay off that line.
 - Insulin is a cargo SKU, not a patient conversation. The leak check refuses clinical drift.
 - If CALLE_WEBHOOK_SECRET is set, missing or wrong HMAC is 401.
 - POST /v1/jobs/{id}/cancel is honored before run_call.
