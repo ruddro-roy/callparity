@@ -29,6 +29,8 @@ services:
     build:
       context: .
       dockerfile: apps/api/Dockerfile
+    # Lifespan runs Alembic against Postgres (stamp if the volume already has
+    # the complete create_all schema), then seeds FR-1842 / FR-1900 / FR-1888.
     environment:
       DATABASE_URL: postgresql+psycopg2://callparity:callparity@postgres:5432/callparity
       REDIS_URL: redis://redis:6379/0
