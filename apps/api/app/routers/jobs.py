@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from app.db import get_session
 from app.models.orm import JobRow
 from app.models.schemas import Job, JobStatus
-from app.security import require_operator
+from app.rate_limit import require_operator_within_rate
 
 router = APIRouter(prefix="/v1")
 
@@ -34,7 +34,7 @@ def get_job(job_id: str, session: Session = Depends(get_session)) -> Job:
 def cancel_job(
     job_id: str,
     session: Session = Depends(get_session),
-    _actor: str = Depends(require_operator),
+    _actor: str = Depends(require_operator_within_rate),
 ) -> Job:
     row = session.get(JobRow, job_id)
     if not row:
