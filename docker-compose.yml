@@ -29,6 +29,10 @@ services:
     build:
       context: .
       dockerfile: apps/api/Dockerfile
+    command:
+      - /bin/sh
+      - -c
+      - python -m app.migrate && exec uvicorn app.main:app --host 0.0.0.0 --port 8000
     environment:
       DATABASE_URL: postgresql+psycopg2://callparity:callparity@postgres:5432/callparity
       REDIS_URL: redis://redis:6379/0

@@ -13,7 +13,7 @@ for root in ROOTS:
     if (root / "app").exists() and str(root) not in sys.path:
         sys.path.insert(0, str(root))
 
-from app.db import init_db, session_factory
+from app.db import initialize_database, session_factory
 from app.models.orm import TicketRow
 from sqlalchemy.orm import Session
 
@@ -99,7 +99,7 @@ FR1888 = {
 def seed(session: Session | None = None) -> None:
     own = False
     if session is None:
-        init_db()
+        initialize_database()
         session = session_factory()()
         own = True
     for payload in (FR1842, FR1900, FR1888):

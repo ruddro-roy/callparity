@@ -6,7 +6,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import get_settings
-from app.db import init_db, session_factory
+from app.db import initialize_database, session_factory
 from app.logging_conf import configure_logging
 from app.models.orm import TicketRow
 from app.routers import health, jobs, tickets
@@ -37,7 +37,7 @@ def _maybe_seed() -> None:
 async def lifespan(_: FastAPI):
     settings = get_settings()
     configure_logging(settings.log_level)
-    init_db()
+    initialize_database()
     _maybe_seed()
     yield
 
