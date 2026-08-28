@@ -1,13 +1,11 @@
 from __future__ import annotations
 
 import asyncio
-import json
+import uuid
 
 from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException, Request
 from fastapi.responses import JSONResponse, StreamingResponse
 from sqlalchemy.orm import Session
-
-import uuid
 
 from app.db import get_session
 from app.deps import get_calle, get_live_reader

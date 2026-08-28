@@ -1,6 +1,6 @@
-from seed_demo_data import seed
 from app.db import session_factory
 from app.models.orm import TicketRow
+from seed_demo_data import seed
 
 
 def test_seed_is_idempotent_and_includes_required_tickets(client):

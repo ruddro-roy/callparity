@@ -1,0 +1,57 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# CI runs entirely offline. It never receives CALLE_API_TOKEN or CALLE_BASE_URL,
+# so no job can place or read a real call. The live adapter and import tests
+# replay recorded bodies through a mocked transport that fails on any non-GET.
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  api:
+    name: API lint and tests
+    runs-on: ubuntu-latest
+    env:
+      USE_FIXTURES: "true"
+      REDIS_OPTIONAL: "true"
+      OPERATOR_TOKEN: ci-operator-token
+      DATABASE_URL: sqlite+pysqlite:///./ci.db
+      PLAYBACK_DELAY_MS: "0"
+      PYTHONPATH: apps/api
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: apps/api/requirements.txt
+      - name: Install dependencies
+        run: pip install -r apps/api/requirements.txt pytest ruff
+      - name: Lint
+        run: ruff check .
+      - name: Tests
+        run: pytest -q
+
+  web:
+    name: Web build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+      - name: Install dependencies
+        run: npm ci
+      - name: Build
+        run: npm run build

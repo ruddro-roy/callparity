@@ -3,7 +3,6 @@ from __future__ import annotations
 import asyncio
 import time
 import uuid
-from typing import Any
 
 import structlog
 from fastapi import BackgroundTasks

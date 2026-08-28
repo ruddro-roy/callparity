@@ -68,7 +68,7 @@ class Claim(BaseModel):
     call_run_id: str = ""
 
     @model_validator(mode="after")
-    def _quote_evidence(self) -> "Claim":
+    def _quote_evidence(self) -> Claim:
         if self.evidence is None and self.evidence_span:
             object.__setattr__(self, "evidence", {"quote": self.evidence_span})
         elif self.evidence and self.evidence.get("quote") and not self.evidence_span:

@@ -1,5 +1,4 @@
 import pytest
-
 from app.models.schemas import Claim, PartyRole, Polarity
 from app.services.planner import (
     LEAK_DROP_THRESHOLD,
@@ -12,7 +11,6 @@ from app.services.planner import (
     leak_score,
     spoken_word_count,
 )
-
 
 GOLDEN_A = [
     Claim(
@@ -183,10 +181,10 @@ def test_missing_critical_entity_refuses_plan():
 
 
 def test_voicemail_never_confirms():
+    from app.models.schemas import ActionKind, EdgeStatus
     from app.ports.calle import RunView
     from app.services.extractor import extract_claims
     from app.services.merger import merge_graph
-    from app.models.schemas import ActionKind, EdgeStatus
 
     voicemail = RunView(
         run_id="run_vm",

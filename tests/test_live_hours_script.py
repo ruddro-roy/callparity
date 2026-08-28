@@ -1,10 +1,9 @@
 import json
 
 import httpx
+import live_hours_call
 import pytest
 import structlog
-
-import live_hours_call
 
 PHONE = "+15550100002"
 

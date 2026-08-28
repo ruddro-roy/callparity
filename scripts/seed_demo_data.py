@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import os
 import sys
 from pathlib import Path
 
@@ -14,10 +13,9 @@ for root in ROOTS:
     if (root / "app").exists() and str(root) not in sys.path:
         sys.path.insert(0, str(root))
 
-from sqlalchemy.orm import Session
-
 from app.db import init_db, session_factory
 from app.models.orm import TicketRow
+from sqlalchemy.orm import Session
 
 FR1842 = {
     "id": "FR-1842",
