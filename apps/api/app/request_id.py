@@ -66,6 +66,7 @@ class RequestIdMiddleware:
             return
 
         request_id = resolve_request_id(_incoming_header(scope.get("headers") or []))
+        scope.setdefault("state", {})["request_id"] = request_id
         structlog.contextvars.clear_contextvars()
         structlog.contextvars.bind_contextvars(request_id=request_id)
 
