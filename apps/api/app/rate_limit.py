@@ -116,6 +116,7 @@ def require_operator_within_rate(
     authorization: str | None = Header(default=None),
     x_operator_token: str | None = Header(default=None, alias="X-Operator-Token"),
 ) -> str:
+    """Charge valid operators by fingerprint and invalid attempts by client IP."""
     host = request.client.host if request.client else None
     try:
         actor = require_operator(authorization, x_operator_token)

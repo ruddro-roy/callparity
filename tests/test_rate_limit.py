@@ -117,6 +117,21 @@ def test_invalid_tokens_fall_back_to_client_ip_bucket(client, monkeypatch):
     assert int(denied.headers["Retry-After"]) >= 1
 
     assert client.post("/v1/tickets/FR-1842/preview").status_code == 200
+    assert client.post("/v1/tickets/FR-1842/preview").status_code == 200
+    assert client.post("/v1/tickets/FR-1842/preview").status_code == 429
+
+
+def test_invalid_tokens_stay_401_when_limit_is_zero(client, monkeypatch):
+    monkeypatch.setenv("MUTATING_RATE_LIMIT", "0")
+    get_settings.cache_clear()
+    reset_rate_limiter()
+
+    for _ in range(6):
+        response = client.post(
+            "/v1/tickets/FR-1842/preview",
+            headers={"Authorization": "Bearer wrong"},
+        )
+        assert response.status_code == 401
 
 
 def test_check_mutating_rate_uses_settings(monkeypatch):
