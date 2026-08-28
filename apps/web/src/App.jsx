@@ -3,11 +3,20 @@ import { useCallback, useEffect, useRef, useState } from "react";
 const API = import.meta.env.VITE_PUBLIC_API_URL || "";
 const apiPath = (path) => `${API}${path}`;
 
+const OPERATOR_TOKEN = import.meta.env.VITE_OPERATOR_TOKEN || "callparity-demo-operator";
+const authHeaders = () => ({ Authorization: `Bearer ${OPERATOR_TOKEN}` });
+
 const TICKETS = [
   { id: "FR-1842", tag: "contradiction" },
   { id: "FR-1900", tag: "control" },
   { id: "FR-1888", tag: "voicemail" },
 ];
+
+// Two humans answered these CALL-E outbound calls on the FR-1842 fact pattern.
+// They are CALL-E call ids, not phone numbers. Import fetches them GET-only.
+const LIVE_CALLS = {
+  "FR-1842": { a: "call_vzro922bOACJjf19ML7vQQ", b: "call_2kxhpDvknUJ444kKfJLsyA" },
+};
 
 const STATUS_STYLE = {
   CONFIRMED: "bg-emerald-950/70 text-emerald-200 border-emerald-400",
@@ -187,12 +196,42 @@ export default function App() {
   const runPreview = async () => {
     setError("");
     try {
-      const res = await fetch(apiPath(`/v1/tickets/${ticketId}/preview`), { method: "POST" });
+      const res = await fetch(apiPath(`/v1/tickets/${ticketId}/preview`), {
+        method: "POST",
+        headers: authHeaders(),
+      });
       const body = await res.json();
       if (!res.ok) throw new Error(body.detail || "preview failed");
       setPreview(body);
     } catch (err) {
       setError(String(err.message || err));
+    }
+  };
+
+  const runImport = async () => {
+    const ids = LIVE_CALLS[ticketId];
+    if (!ids || inflight.current || running) return;
+    inflight.current = true;
+    setRunning(true);
+    setError("");
+    setPhase("importing");
+    try {
+      const res = await fetch(apiPath(`/v1/tickets/${ticketId}/parity/import`), {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...authHeaders() },
+        body: JSON.stringify({ call_id_a: ids.a, call_id_b: ids.b }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.detail || `import ${res.status}`);
+      setJob(body);
+      setPhase(body.phase || "merged");
+      if (body.result?.graph) setGraph(body.result.graph);
+      if (body.result?.action) setAction(body.result.action);
+    } catch (err) {
+      setError(String(err.message || err));
+    } finally {
+      setRunning(false);
+      inflight.current = false;
     }
   };
 
@@ -210,7 +249,7 @@ export default function App() {
     try {
       const res = await fetch(apiPath(`/v1/tickets/${ticketId}/parity`), {
         method: "POST",
-        headers: { "Idempotency-Key": `ui-${ticketId}` },
+        headers: { "Idempotency-Key": `ui-${ticketId}`, ...authHeaders() },
       });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(body.detail || `parity ${res.status}`);
@@ -313,6 +352,27 @@ export default function App() {
           ))}
         </nav>
       </div>
+
+      {LIVE_CALLS[ticketId] && (
+        <div className="flex flex-wrap items-center gap-3 border-b border-slate-800 bg-slate-900/40 px-6 py-2 text-sm">
+          <span className="font-semibold text-emerald-300">Live import</span>
+          <span className="text-slate-400">Two recorded CALL-E calls, read-only GET, no dial.</span>
+          <code className="rounded bg-slate-900 px-2 py-0.5 font-mono text-xs text-slate-300">
+            A {LIVE_CALLS[ticketId].a}
+          </code>
+          <code className="rounded bg-slate-900 px-2 py-0.5 font-mono text-xs text-slate-300">
+            B {LIVE_CALLS[ticketId].b}
+          </code>
+          <button
+            type="button"
+            onClick={runImport}
+            disabled={running}
+            className="rounded-md bg-emerald-400 px-4 py-1.5 font-semibold text-slate-950 hover:bg-emerald-300 disabled:opacity-50"
+          >
+            Import live records
+          </button>
+        </div>
+      )}
 
       <main className="grid min-h-0 flex-1 grid-cols-12 gap-4 px-6 py-4">
         <div className="col-span-3 min-h-0">

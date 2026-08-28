@@ -4,6 +4,8 @@ COPY apps/web/package.json apps/web/package-lock.json ./
 RUN npm ci
 COPY apps/web/index.html apps/web/vite.config.js apps/web/tailwind.config.js apps/web/postcss.config.js ./
 COPY apps/web/src ./src
+ARG VITE_OPERATOR_TOKEN=callparity-demo-operator
+ENV VITE_OPERATOR_TOKEN=$VITE_OPERATOR_TOKEN
 RUN npm run build
 
 FROM nginx:1.27-alpine
