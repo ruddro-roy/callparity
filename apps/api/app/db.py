@@ -25,7 +25,13 @@ def get_engine():
 
 def init_db() -> None:
     engine = get_engine()
-    Base.metadata.create_all(bind=engine)
+    if engine.dialect.name == "sqlite":
+        Base.metadata.create_all(bind=engine)
+        return
+
+    from app.migrations import upgrade_schema
+
+    upgrade_schema(engine)
 
 
 def reset_engine() -> None:

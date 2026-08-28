@@ -25,6 +25,17 @@ services:
     ports:
       - "6379:6379"
 
+  migrate:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    environment:
+      DATABASE_URL: postgresql+psycopg2://callparity:callparity@postgres:5432/callparity
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: ["python", "-m", "app.migrations"]
+
   api:
     build:
       context: .
@@ -44,6 +55,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/healthz')"]
       interval: 5s

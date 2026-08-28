@@ -19,6 +19,10 @@ Same loop for freight, prior-auth, construction materials, or insurance suppleme
     cp .env.example .env
     docker compose up -d --build
 
+Compose runs Alembic in a one-shot migration service before the API starts. Direct
+non-SQLite API starts run the same upgrade before seeding. A database created before
+Alembic is adopted only when its schema matches the migration baseline.
+
 - Workbench: http://localhost:3000
 - Health: http://localhost:8000/healthz. Readiness: http://localhost:8000/readyz (200 when the DB answers, else 503)
 - Seeded tickets: **FR-1842** (contradiction), **FR-1900** (control / CONFIRMED), **FR-1888** (Party B voicemail / UNREACHABLE)
@@ -44,6 +48,8 @@ If Docker is not installed, use the local path below.
     pytest -q
 
 Vite in apps/web proxies /v1 to 127.0.0.1:8000 (`npm install && npm run dev`). Seed is idempotent.
+SQLite local and test databases keep their lightweight in-process schema setup.
+Postgres uses the versioned migrations in `apps/api/migrations`.
 
 ## Architecture
 
@@ -164,6 +170,7 @@ The product ships and demos on fixtures. Import is the live proof path: it merge
 
     apps/web                     Vite + React + Tailwind workbench
     apps/api                     FastAPI engine
+    apps/api/migrations          Alembic schema revisions
     packages/shared              JSON Schema
     scripts/seed_demo_data.py
     scripts/live_hours_call.py   One live hours-of-operation call (operator path)
