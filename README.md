@@ -33,7 +33,7 @@ If Docker is not installed, use the local path below.
 
     python3 -m venv .venv
     . .venv/bin/activate
-    pip install -r apps/api/requirements.txt pytest
+    pip install -r apps/api/requirements.txt pytest ruff
     export DATABASE_URL=sqlite+pysqlite:///./callparity.db
     export REDIS_OPTIONAL=true
     export USE_FIXTURES=true
@@ -44,6 +44,19 @@ If Docker is not installed, use the local path below.
     pytest -q
 
 Vite in apps/web proxies /v1 to 127.0.0.1:8000 (`npm install && npm run dev`). Seed is idempotent.
+
+### Database migrations
+
+The API container runs `python -m app.migrations` before Uvicorn starts. It upgrades a fresh
+Postgres database to the current Alembic head. If it finds the exact unversioned schema from an
+earlier CallParity release, it stamps the initial revision without rewriting rows and then applies
+later migrations. A partial or drifted unversioned schema fails closed.
+
+The Docker-free SQLite seed path keeps using `Base.metadata.create_all` for local development and
+tests. To exercise the production migration path against the configured database:
+
+    PYTHONPATH=apps/api python -m app.migrations
+    PYTHONPATH=apps/api alembic -c apps/api/alembic.ini current
 
 ## Architecture
 
