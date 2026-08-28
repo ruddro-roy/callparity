@@ -19,6 +19,9 @@ class Settings(BaseSettings):
     calle_api_token: str = ""
     calle_webhook_secret: str = ""
     operator_token: str = ""
+    # Mutating operator routes. 0 disables the limiter (tests / CI).
+    mutating_rate_limit: int = 60
+    mutating_rate_window_seconds: int = 60
 
     @property
     def calle_mode(self) -> CalleMode:
