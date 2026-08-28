@@ -33,7 +33,7 @@ If Docker is not installed, use the local path below.
 
     python3 -m venv .venv
     . .venv/bin/activate
-    pip install -r apps/api/requirements.txt pytest
+    pip install -r apps/api/requirements.txt pytest hypothesis
     export DATABASE_URL=sqlite+pysqlite:///./callparity.db
     export REDIS_OPTIONAL=true
     export USE_FIXTURES=true
