@@ -23,6 +23,7 @@ jobs:
       OPERATOR_TOKEN: ci-operator-token
       DATABASE_URL: sqlite+pysqlite:///./ci.db
       PLAYBACK_DELAY_MS: "0"
+      MUTATING_RATE_LIMIT: "0"
       PYTHONPATH: apps/api
     steps:
       - uses: actions/checkout@v4
