@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import json
+import logging
 import uuid
 
+from app.logging_conf import configure_logging
 from app.request_id import (
     RequestIdMiddleware,
     parse_request_id,
@@ -56,6 +58,15 @@ def test_resolve_replaces_unsafe_values():
     generated = resolve_request_id("test-operator-token")
     uuid.UUID(generated)
     assert generated != "test-operator-token"
+
+
+def test_structured_access_line_replaces_uvicorn_access_log():
+    uvicorn_access = logging.getLogger("uvicorn.access")
+    uvicorn_access.disabled = False
+
+    configure_logging()
+
+    assert uvicorn_access.disabled is True
 
 
 def test_healthz_assigns_and_echoes_request_id(client):

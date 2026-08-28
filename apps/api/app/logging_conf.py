@@ -35,6 +35,8 @@ def _redact_phones_processor(_logger: Any, _name: str, event_dict: dict) -> dict
 
 
 def configure_logging(level: str = "INFO") -> None:
+    # RequestIdMiddleware replaces Uvicorn's unstructured, query-bearing line.
+    logging.getLogger("uvicorn.access").disabled = True
     timestamper = structlog.processors.TimeStamper(fmt="iso")
     structlog.configure(
         processors=[
