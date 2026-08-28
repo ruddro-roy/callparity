@@ -78,7 +78,7 @@ The planner also generates the naive recap a follow-up bot would ask ("Can you c
 
 **Idea (tie-break 2).** Cross-call refutation: hypotheses from A, minimum observable questions for B, disclosure budget, structural leak check. The second call is a test of the first. Merged into awesome-phone-call-agents as [#220](https://github.com/CALLE-AI/awesome-phone-call-agents/pull/220).
 
-**Implementation (tie-break 3).** FastAPI, Pydantic, fixture + live adapters behind one port, mocked wire-format tests for POST /v1/calls, HMAC-optional webhook (fail closed), a shared operator token on every mutating route, an import audit trail, phone redaction in logs, Alembic for the Postgres schema, authorization-based idempotency, structured JSON logs, SSE phases, 133 tests across planner, merger, idempotency, webhook, live adapter, live-record import, operator token, audit, redaction, migrations, request id, rate limit, operator script, skill, and the e2e demo loop (the compose smoke skips when the stack is down).
+**Implementation (tie-break 3).** FastAPI, Pydantic, fixture + live adapters behind one port, mocked wire-format tests for POST /v1/calls, HMAC-optional webhook (fail closed), a shared operator token on every mutating route, an import audit trail, phone redaction in logs, Alembic for the Postgres schema, authorization-based idempotency, structured JSON logs, SSE phases, 135 tests across planner, merger, idempotency, webhook, live adapter, live-record import, operator token, audit, redaction, migrations, request id, rate limit, operator script, skill, and the e2e demo loop (the compose smoke skips when the stack is down).
 
 **Demo (tie-break 4).** One screen: A claims, refute plan with the dropped leak, B claims, action card, merged graph. DEMO_SCRIPT.md walks it in 90 seconds. Fixtures so a busy signal cannot kill the punchline.
 
@@ -129,7 +129,7 @@ CI never needs the credentials. `tests/test_live_import.py` replays recorded cop
 
 ## Safety
 
-- preview, parity, import, create ticket, and cancel require the operator token (401 otherwise). The compare is constant-time and fails closed. Those five routes also share a per-fingerprint rate limit (60 per minute by default, `MUTATING_RATE_LIMIT=0` disables it). healthz and readyz stay public and unlimited.
+- preview, parity, import, create ticket, and cancel require the operator token (401 otherwise). The compare is constant-time and fails closed. Those five routes also share a per-fingerprint rate limit (60 per minute by default, `MUTATING_RATE_LIMIT=0` disables it); invalid-token attempts fall back to a client-IP bucket. healthz and readyz stay public and unlimited.
 - Every import writes an audit row: the operator-token fingerprint (never the raw token), both call ids, the action, and the job id.
 - No call without stored consent on that party (403 otherwise).
 - The hours script refuses to dial without CALLE_CONSENT=yes, and its errors never echo the destination or the token.

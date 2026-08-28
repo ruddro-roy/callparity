@@ -9,19 +9,30 @@ this.
 
 from __future__ import annotations
 
+import math
 import threading
 import time
+from typing import NamedTuple
 
-from fastapi import Depends, HTTPException, Request
+from fastapi import Header, HTTPException, Request
 
 from app.config import get_settings
 from app.security import require_operator
 
 _DENIED_DETAIL = "rate limit exceeded; retry later"
+_MAX_TRACKED_KEYS = 10_000
+
+
+class RateDecision(NamedTuple):
+    allowed: bool
+    retry_after_seconds: int
 
 
 class MemoryLimiter:
-    def __init__(self) -> None:
+    def __init__(self, max_keys: int = _MAX_TRACKED_KEYS) -> None:
+        if max_keys <= 0:
+            raise ValueError("max_keys must be positive")
+        self._max_keys = max_keys
         self._hits: dict[str, list[float]] = {}
         self._lock = threading.Lock()
 
@@ -29,23 +40,40 @@ class MemoryLimiter:
         with self._lock:
             self._hits.clear()
 
-    def hit(self, key: str, limit: int, window_s: float) -> tuple[bool, int]:
-        """Return (allowed, retry_after_seconds). Fail closed on bad config."""
+    def hit(self, key: str, limit: int, window_s: float) -> RateDecision:
+        """Return the decision for one key. Fail closed on bad config or storage pressure."""
         if limit == 0:
-            return True, 0
+            return RateDecision(True, 0)
         if limit < 0 or window_s <= 0:
-            return False, 60
+            return RateDecision(False, 60)
         now = time.monotonic()
         cutoff = now - window_s
         with self._lock:
             times = [t for t in self._hits.get(key, []) if t > cutoff]
-            if len(times) >= limit:
+            if times:
                 self._hits[key] = times
-                retry = int(times[0] + window_s - now) + 1
-                return False, max(1, retry)
+            else:
+                self._hits.pop(key, None)
+            if len(times) >= limit:
+                retry = math.ceil(times[0] + window_s - now)
+                return RateDecision(False, max(1, retry))
+            if key not in self._hits and len(self._hits) >= self._max_keys:
+                stale_keys = [
+                    tracked_key
+                    for tracked_key, tracked_times in self._hits.items()
+                    if tracked_times[-1] <= cutoff
+                ]
+                for stale_key in stale_keys:
+                    del self._hits[stale_key]
+                if len(self._hits) >= self._max_keys:
+                    retry = min(
+                        tracked_times[-1] + window_s - now
+                        for tracked_times in self._hits.values()
+                    )
+                    return RateDecision(False, max(1, math.ceil(retry)))
             times.append(now)
             self._hits[key] = times
-            return True, 0
+            return RateDecision(True, 0)
 
 
 _limiter = MemoryLimiter()
@@ -85,8 +113,14 @@ def check_mutating_rate(actor: str, client_host: str | None) -> None:
 
 def require_operator_within_rate(
     request: Request,
-    actor: str = Depends(require_operator),
+    authorization: str | None = Header(default=None),
+    x_operator_token: str | None = Header(default=None, alias="X-Operator-Token"),
 ) -> str:
     host = request.client.host if request.client else None
+    try:
+        actor = require_operator(authorization, x_operator_token)
+    except HTTPException:
+        check_mutating_rate("", host)
+        raise
     check_mutating_rate(actor, host)
     return actor

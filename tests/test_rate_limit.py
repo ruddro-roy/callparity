@@ -35,6 +35,21 @@ def test_memory_limiter_fails_closed_on_bad_config():
     assert lim.hit("a", 5, -3) == (False, 60)
 
 
+def test_memory_limiter_bounds_keys_and_reclaims_stale_buckets(monkeypatch):
+    now = [0.0]
+    monkeypatch.setattr("app.rate_limit.time.monotonic", lambda: now[0])
+    lim = MemoryLimiter(max_keys=2)
+
+    assert lim.hit("a", 2, 60.0).allowed
+    assert lim.hit("b", 2, 60.0).allowed
+    denied = lim.hit("c", 2, 60.0)
+    assert not denied.allowed
+    assert denied.retry_after_seconds == 60
+
+    now[0] = 61.0
+    assert lim.hit("c", 2, 60.0).allowed
+
+
 def test_preview_exceeds_limit_returns_429(client, monkeypatch):
     monkeypatch.setenv("MUTATING_RATE_LIMIT", "2")
     monkeypatch.setenv("MUTATING_RATE_WINDOW_SECONDS", "60")
@@ -85,6 +100,23 @@ def test_missing_token_is_still_401_not_429(client, monkeypatch):
     reset_rate_limiter()
     res = client.post("/v1/tickets/FR-1842/preview", headers={"Authorization": ""})
     assert res.status_code == 401
+
+
+def test_invalid_tokens_fall_back_to_client_ip_bucket(client, monkeypatch):
+    monkeypatch.setenv("MUTATING_RATE_LIMIT", "2")
+    monkeypatch.setenv("MUTATING_RATE_WINDOW_SECONDS", "60")
+    get_settings.cache_clear()
+    reset_rate_limiter()
+    invalid = {"Authorization": "Bearer wrong"}
+
+    assert client.post("/v1/tickets/FR-1842/preview", headers=invalid).status_code == 401
+    assert client.post("/v1/tickets/FR-1842/preview", headers=invalid).status_code == 401
+    denied = client.post("/v1/tickets/FR-1842/preview", headers=invalid)
+    assert denied.status_code == 429
+    assert denied.json()["detail"] == "rate limit exceeded; retry later"
+    assert int(denied.headers["Retry-After"]) >= 1
+
+    assert client.post("/v1/tickets/FR-1842/preview").status_code == 200
 
 
 def test_check_mutating_rate_uses_settings(monkeypatch):
