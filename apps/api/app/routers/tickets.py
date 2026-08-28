@@ -13,7 +13,7 @@ from app.models.orm import ImportAuditRow, TicketRow, TranscriptPointer
 from app.models.schemas import Job, ParityImportRequest, Ticket, TicketCreate
 from app.ports.calle import CallePort, RunView
 from app.ports.live import CalleApiError
-from app.security import require_operator
+from app.rate_limit import require_operator_within_rate
 from app.services.events import encode, snapshot
 from app.services.extractor import extract_claims
 from app.services.idempotency import sha256_text
@@ -28,7 +28,7 @@ router = APIRouter(prefix="/v1")
 def create_ticket(
     payload: TicketCreate,
     session: Session = Depends(get_session),
-    _actor: str = Depends(require_operator),
+    _actor: str = Depends(require_operator_within_rate),
 ) -> Ticket:
     if session.get(TicketRow, payload.id):
         raise HTTPException(409, "ticket exists")
@@ -75,7 +75,7 @@ def start_parity(
     session: Session = Depends(get_session),
     calle: CallePort = Depends(get_calle),
     idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
-    _actor: str = Depends(require_operator),
+    _actor: str = Depends(require_operator_within_rate),
 ) -> JSONResponse:
     if not session.get(TicketRow, ticket_id):
         raise HTTPException(404, "ticket not found")
@@ -93,7 +93,7 @@ def import_parity(
     payload: ParityImportRequest,
     session: Session = Depends(get_session),
     reader: CallePort = Depends(get_live_reader),
-    actor: str = Depends(require_operator),
+    actor: str = Depends(require_operator_within_rate),
 ) -> Job:
     """Run parity on two existing CALL-E call records. Never places a call."""
     row = session.get(TicketRow, ticket_id)
@@ -128,7 +128,7 @@ def import_parity(
 def preview_parity(
     ticket_id: str,
     session: Session = Depends(get_session),
-    _actor: str = Depends(require_operator),
+    _actor: str = Depends(require_operator_within_rate),
 ) -> dict:
     row = session.get(TicketRow, ticket_id)
     if not row:

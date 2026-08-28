@@ -2,13 +2,15 @@ import sys
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.responses import PlainTextResponse
 
 from app.config import get_settings
 from app.db import prepare_schema, session_factory
 from app.logging_conf import configure_logging
 from app.models.orm import TicketRow
+from app.request_id import HEADER, RequestIdMiddleware, resolve_request_id
 from app.routers import health, jobs, tickets
 
 
@@ -43,12 +45,28 @@ async def lifespan(_: FastAPI):
 
 
 app = FastAPI(title="CallParity API", version="0.2.0", lifespan=lifespan)
+
+
+@app.exception_handler(Exception)
+async def _unhandled_error(request: Request, _exc: Exception) -> PlainTextResponse:
+    request_id = resolve_request_id(getattr(request.state, "request_id", None))
+    return PlainTextResponse(
+        "Internal Server Error",
+        status_code=500,
+        headers={HEADER: request_id},
+    )
+
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["X-Request-ID"],
 )
+# Last added runs first: request id wraps CORS so every response, including
+# preflight, carries X-Request-ID and one access line.
+app.add_middleware(RequestIdMiddleware)
 app.include_router(health.router)
 app.include_router(tickets.router)
 app.include_router(jobs.router)
