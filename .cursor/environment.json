@@ -1,0 +1,20 @@
+{
+  "name": "CallParity",
+  "install": ".cursor/install.sh",
+  "terminals": [
+    {
+      "name": "api",
+      "command": ".cursor/run-api.sh",
+      "description": "CallParity FastAPI engine on 127.0.0.1:8000. SQLite + Redis-optional + USE_FIXTURES=true, so no Docker, Postgres, Redis, or CALL-E credentials are required. Health: http://127.0.0.1:8000/healthz"
+    },
+    {
+      "name": "web",
+      "command": ".cursor/run-web.sh",
+      "description": "Vite + React workbench on http://localhost:3000. Proxies /v1 and /healthz to the API on 127.0.0.1:8000."
+    }
+  ],
+  "ports": [
+    { "name": "web", "port": 3000 },
+    { "name": "api", "port": 8000 }
+  ]
+}
