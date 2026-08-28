@@ -12,7 +12,7 @@ from pathlib import Path
 
 from alembic import command
 from alembic.config import Config
-from sqlalchemy import create_engine, inspect
+from sqlalchemy import create_engine, inspect, text
 
 from app.config import get_settings
 from app.models.orm import Base
@@ -24,6 +24,12 @@ _SCRIPTS = Path(__file__).resolve().parents[1] / "alembic"
 
 # Tables the current ORM owns. alembic_version is Alembic's, not ours.
 ORM_TABLES = frozenset(Base.metadata.tables)
+
+# Fixed application-wide key for the Postgres advisory lock that serializes
+# schema migrations. Replicas booting at the same moment queue on it instead
+# of racing stamp/upgrade DDL against the same database. The transactional
+# lock releases itself on commit, rollback, or a crashed connection.
+MIGRATION_LOCK_KEY = 7_214_180_042_001
 
 
 def alembic_config(url: str | None = None) -> Config:
@@ -49,39 +55,50 @@ def apply_migrations() -> str:
     Returns the action taken: "upgrade", "stamp", or "upgrade" after a no-op.
     Raises RuntimeError if some but not all ORM tables exist (partial schema).
     Idempotent: a second call on a current database is a no-op upgrade.
+
+    The schema inspection and the stamp/upgrade run on one connection inside
+    one transaction. On Postgres that transaction first takes an advisory
+    lock, so replicas booting simultaneously serialize: the first one
+    migrates, the rest block on the lock, then re-inspect the committed
+    schema and no-op. env.py reuses this connection via cfg.attributes.
     """
     url = get_settings().database_url
     engine = _inspect_engine(url)
+    cfg = alembic_config(url)
     try:
-        present = set(inspect(engine).get_table_names())
+        with engine.begin() as conn:
+            if conn.dialect.name == "postgresql":
+                conn.execute(
+                    text("SELECT pg_advisory_xact_lock(:key)"),
+                    {"key": MIGRATION_LOCK_KEY},
+                )
+            cfg.attributes["connection"] = conn
+
+            present = set(inspect(conn).get_table_names())
+            ours = present & ORM_TABLES
+            versioned = "alembic_version" in present
+
+            if versioned:
+                command.upgrade(cfg, "head")
+                action = "upgrade"
+            elif ours == ORM_TABLES:
+                command.stamp(cfg, "head")
+                action = "stamp"
+            elif ours:
+                missing = sorted(ORM_TABLES - ours)
+                raise RuntimeError(
+                    "partial schema; refuse to guess. missing tables: "
+                    + ", ".join(missing)
+                    + ". wipe the volume or restore a complete create_all schema"
+                )
+            else:
+                command.upgrade(cfg, "head")
+                action = "upgrade"
     finally:
         engine.dispose()
 
-    cfg = alembic_config(url)
-    ours = present & ORM_TABLES
-    versioned = "alembic_version" in present
-
-    if versioned:
-        command.upgrade(cfg, "head")
-        log.info("schema.migrate action=upgrade")
-        return "upgrade"
-
-    if ours == ORM_TABLES:
-        command.stamp(cfg, "head")
-        log.info("schema.migrate action=stamp")
-        return "stamp"
-
-    if ours:
-        missing = sorted(ORM_TABLES - ours)
-        raise RuntimeError(
-            "partial schema; refuse to guess. missing tables: "
-            + ", ".join(missing)
-            + ". wipe the volume or restore a complete create_all schema"
-        )
-
-    command.upgrade(cfg, "head")
-    log.info("schema.migrate action=upgrade")
-    return "upgrade"
+    log.info("schema.migrate action=%s", action)
+    return action
 
 
 def uses_alembic(url: str) -> bool:
