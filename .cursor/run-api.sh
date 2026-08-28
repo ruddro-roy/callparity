@@ -15,4 +15,4 @@ export USE_FIXTURES=true
 export SEED_ON_STARTUP=true
 export PYTHONPATH="${REPO_ROOT}/apps/api"
 
-exec uvicorn app.main:app --app-dir apps/api --host 127.0.0.1 --port 8000
+exec uvicorn app.main:app --app-dir apps/api --host 127.0.0.1 --port 8000 --no-access-log

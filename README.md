@@ -40,7 +40,7 @@ If Docker is not installed, use the local path below.
     export OPERATOR_TOKEN=callparity-demo-operator
     export PYTHONPATH=apps/api
     python scripts/seed_demo_data.py
-    uvicorn app.main:app --app-dir apps/api --host 127.0.0.1 --port 8000
+    uvicorn app.main:app --app-dir apps/api --host 127.0.0.1 --port 8000 --no-access-log
     pytest -q
 
 Vite in apps/web proxies /v1 to 127.0.0.1:8000 (`npm install && npm run dev`). Seed is idempotent.

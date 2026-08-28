@@ -4,9 +4,12 @@ from __future__ import annotations
 
 import json
 import uuid
+from pathlib import Path
 
 from app.request_id import parse_request_id, resolve_request_id
+from fastapi.testclient import TestClient
 
+REPO = Path(__file__).resolve().parents[1]
 SAMPLE = "+1" + "5" * 10
 KNOWN = "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee"
 
@@ -27,8 +30,8 @@ def _lines(capsys) -> list[dict]:
 
 def _access(capsys) -> dict:
     hits = [row for row in _lines(capsys) if row.get("event") == "http.request"]
-    assert hits, "expected one http.request line"
-    return hits[-1]
+    assert len(hits) == 1, f"expected one http.request line, got {len(hits)}"
+    return hits[0]
 
 
 def test_parse_accepts_canonical_uuid_only():
@@ -115,6 +118,42 @@ def test_401_still_echoes_request_id(client):
     )
     assert res.status_code == 401
     assert res.headers["X-Request-ID"] == KNOWN
+
+
+def test_unhandled_error_echoes_id_and_logs_one_500_line(client, capsys):
+    from app.main import app
+
+    original_routes = list(app.router.routes)
+
+    @app.get("/_test/unhandled-error")
+    def raise_unhandled_error():
+        raise RuntimeError("test error")
+
+    try:
+        with TestClient(app, raise_server_exceptions=False) as error_client:
+            response = error_client.get(
+                "/_test/unhandled-error",
+                headers={"X-Request-ID": KNOWN},
+            )
+    finally:
+        app.router.routes[:] = original_routes
+
+    assert response.status_code == 500
+    assert response.text == "Internal Server Error"
+    assert response.headers["X-Request-ID"] == KNOWN
+    hits = [
+        row
+        for row in _lines(capsys)
+        if row.get("event") == "http.request" and row.get("path") == "/_test/unhandled-error"
+    ]
+    assert len(hits) == 1
+    assert hits[0]["status"] == 500
+    assert hits[0]["request_id"] == KNOWN
+
+
+def test_uvicorn_commands_disable_duplicate_access_log():
+    for relative_path in ("apps/api/Dockerfile", ".cursor/run-api.sh", "README.md"):
+        assert "--no-access-log" in (REPO / relative_path).read_text()
 
 
 def test_successive_requests_do_not_leak_request_id(client):
