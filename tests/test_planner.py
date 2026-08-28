@@ -155,6 +155,18 @@ def test_leaky_recap_dropped_without_token_match():
         assert q["leak"] < LEAK_DROP_THRESHOLD
 
 
+def test_naive_recap_candidate_is_generated_and_dropped():
+    """The follow-up-bot recap must be produced, then dropped by the leak check."""
+    compiled = compile_refutation(TICKET, SLOTTED_A)
+    recap_ids = [d["id"] for d in compiled["dropped_questions"] if d["id"].endswith("_recap")]
+    assert recap_ids, "the naive recap candidate must be generated"
+    for dropped in compiled["dropped_questions"]:
+        if dropped["id"].endswith("_recap"):
+            assert dropped["leak"] >= LEAK_DROP_THRESHOLD
+    selected_ids = [q["id"] for q in compiled["selected_questions"]]
+    assert not any(sid.endswith("_recap") for sid in selected_ids)
+
+
 def test_golden_observables_survive_leak_check():
     compiled = compile_refutation(TICKET, SLOTTED_A)
     questions = " ".join(q["question"].lower() for q in compiled["selected_questions"])

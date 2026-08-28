@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from app.db import get_session
 from app.models.orm import JobRow
 from app.models.schemas import Job, JobStatus
+from app.security import require_operator
 
 router = APIRouter(prefix="/v1")
 
@@ -30,7 +31,11 @@ def get_job(job_id: str, session: Session = Depends(get_session)) -> Job:
 
 
 @router.post("/jobs/{job_id}/cancel", response_model=Job)
-def cancel_job(job_id: str, session: Session = Depends(get_session)) -> Job:
+def cancel_job(
+    job_id: str,
+    session: Session = Depends(get_session),
+    _actor: str = Depends(require_operator),
+) -> Job:
     row = session.get(JobRow, job_id)
     if not row:
         raise HTTPException(404, "job not found")

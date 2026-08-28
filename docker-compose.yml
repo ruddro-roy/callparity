@@ -36,6 +36,7 @@ services:
       CALLE_BASE_URL: ${CALLE_BASE_URL:-}
       CALLE_API_TOKEN: ${CALLE_API_TOKEN:-}
       CALLE_WEBHOOK_SECRET: ${CALLE_WEBHOOK_SECRET:-}
+      OPERATOR_TOKEN: ${OPERATOR_TOKEN:-callparity-demo-operator}
       REDIS_OPTIONAL: "false"
       SEED_ON_STARTUP: "true"
     depends_on:
@@ -55,6 +56,8 @@ services:
     build:
       context: .
       dockerfile: apps/web/Dockerfile
+      args:
+        VITE_OPERATOR_TOKEN: ${OPERATOR_TOKEN:-callparity-demo-operator}
     depends_on:
       api:
         condition: service_healthy

@@ -18,6 +18,7 @@ class Settings(BaseSettings):
     seed_on_startup: bool = True
     calle_api_token: str = ""
     calle_webhook_secret: str = ""
+    operator_token: str = ""
 
     @property
     def calle_mode(self) -> CalleMode:

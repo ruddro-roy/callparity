@@ -15,6 +15,10 @@ os.environ.setdefault("REDIS_OPTIONAL", "true")
 os.environ.setdefault("USE_FIXTURES", "true")
 os.environ.setdefault("SEED_ON_STARTUP", "false")
 os.environ.setdefault("PLAYBACK_DELAY_MS", "0")
+os.environ.setdefault("OPERATOR_TOKEN", "test-operator-token")
+
+OPERATOR_TOKEN = os.environ["OPERATOR_TOKEN"]
+AUTH = {"Authorization": f"Bearer {OPERATOR_TOKEN}"}
 
 
 @pytest.fixture
@@ -25,6 +29,7 @@ def client(tmp_path, monkeypatch):
     monkeypatch.setenv("SEED_ON_STARTUP", "false")
     monkeypatch.setenv("USE_FIXTURES", "true")
     monkeypatch.setenv("PLAYBACK_DELAY_MS", "0")
+    monkeypatch.setenv("OPERATOR_TOKEN", OPERATOR_TOKEN)
 
     from app.config import get_settings
     from app.db import init_db, reset_engine
@@ -38,6 +43,7 @@ def client(tmp_path, monkeypatch):
     from app.main import app
 
     with TestClient(app) as c:
+        c.headers.update(AUTH)
         yield c
     reset_engine()
     get_settings.cache_clear()
