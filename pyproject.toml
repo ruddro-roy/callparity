@@ -1,0 +1,21 @@
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+# skills/callparity-claimkill mirrors upstream PR 220 byte-for-byte, so it is
+# out of lint scope (it is still exercised by pytest). apps/web is JS.
+extend-exclude = [".venv", "apps/web", "dist", "node_modules", "skills"]
+
+[tool.ruff.lint]
+# Real-error rules that pay for themselves without a formatter or opinionated
+# style fights: pyflakes (F), import errors and statement/runtime errors
+# (E4/E7/E9), import sorting (I), and pyupgrade (UP). Line length and whitespace
+# stay a formatter concern, and FastAPI's Depends-in-defaults is idiomatic.
+select = ["E4", "E7", "E9", "F", "I", "UP"]
+# (str, Enum) is a deliberate, widely-used pattern here; switching to StrEnum
+# would change str(member) semantics on the domain enums for no safety gain.
+ignore = ["UP042"]
+
+[tool.ruff.lint.per-file-ignores]
+# These scripts bootstrap sys.path before importing app modules.
+"scripts/seed_demo_data.py" = ["E402"]
+"scripts/live_hours_call.py" = ["E402"]

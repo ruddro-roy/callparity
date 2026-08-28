@@ -9,9 +9,7 @@ later import replays the stored job and fetches nothing.
 import json
 
 import httpx
-
 from test_live_import import (
-    DRIVER_CALL_ID,
     FIXTURES,
     IMPORT_BODY,
     WAREHOUSE_CALL_ID,

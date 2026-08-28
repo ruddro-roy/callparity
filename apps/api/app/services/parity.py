@@ -11,7 +11,7 @@ from app.config import get_settings
 from app.logging_conf import mask_e164
 from app.models.orm import ActionCardRow, ClaimRow, EdgeRow, JobRow, TicketRow, TranscriptPointer
 from app.models.schemas import ActionCard, Claim, GraphEdge, Job, JobStatus
-from app.ports.calle import CallTask, CallePort, RunRef
+from app.ports.calle import CallePort, CallTask, RunRef
 from app.services.events import publish
 from app.services.extractor import extract_claims
 from app.services.idempotency import derive_idempotency_key, sha256_text

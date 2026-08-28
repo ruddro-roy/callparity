@@ -1,6 +1,5 @@
 import hashlib
 import hmac
-import json
 
 
 def test_webhook_open_when_secret_unset(client):

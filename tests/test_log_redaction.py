@@ -4,7 +4,6 @@ The sample is built from parts so no phone-shaped literal appears in this file.
 """
 
 import structlog
-
 from app.logging_conf import configure_logging, redact_log_value
 
 # Synthetic E.164-shaped run, assembled at runtime; never a real, dialable number.
