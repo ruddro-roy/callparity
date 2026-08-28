@@ -12,11 +12,13 @@ untouched; and mask_e164 always hides the middle of anything phone-shaped.
 Runs are derandomized so CI is deterministic.
 """
 
+import string
+
 from app.logging_conf import _LOG_PHONE, _redact_phones_processor, mask_e164, redact_log_value
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
-DIGITS = "0123456789"
+DIGITS = string.digits
 # The characters _LOG_PHONE accepts inside a run, after the leading +digit.
 RUN_BODY = DIGITS + " ().-"
 
