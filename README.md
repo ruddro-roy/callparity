@@ -8,6 +8,8 @@ The seed that judges see: ticket **FR-1842**, pallet **PL-9F21**, $18,000/hour c
 
 ![CallParity workbench after the FR-1842 fixture run](demo/workbench-fr1842.png)
 
+Deploying this for real? [docs/OPERATIONS.md](docs/OPERATIONS.md) is the operator reference: every environment variable, the migration story, endpoint auth and rate limits, observability, crash recovery, and the security posture.
+
 ## Value proposition
 
 Existing phone-agent skills confirm one recipient or schedule one event. They do not compile a second call as a falsification test of the first. Dispatchers stare at two spoken truths and an email thread. CallParity emits one action card (RESTAGE_AND_RECALL, RELEASE_TRUCK, or HOLD_FOR_HUMAN) with quoted transcript spans on every edge.
