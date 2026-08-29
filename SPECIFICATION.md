@@ -1,5 +1,7 @@
 # CallParity specification
 
+Design-time specification. For the shipped operational surface (all endpoints, environment variables, migrations, observability, crash recovery), see [docs/OPERATIONS.md](docs/OPERATIONS.md).
+
 ## 1. Problem
 
 Phone work fails when two parties each hold a partial, spoken truth and no system treats those utterances as claims that can contradict. Existing CALL-E skills confirm one recipient or schedule one event. They do not compile a second call as a falsification test of the first.
@@ -36,7 +38,7 @@ Equal weights (25% each). Internal utility also applied Novelty 30 / Depth 30 / 
 
 Avoided: appointment scheduling, lead qualification, generic callbacks, dispatch, approval gates, line canaries - already on [awesome-phone-call-agents](https://github.com/CALLE-AI/awesome-phone-call-agents).
 
-Prize targeting: one submission can win only one prize. CallParity is built to score both practical (real two-sided ops tickets) and innovative (refutation compiler). Tie-break order is Impact -> Idea -> Implementation -> Demo, so the ticket must stay specific (cold-chain pallet), not abstract.
+Prize targeting: one submission can win only one prize. CallParity is built to score both practical (real two-sided ops tickets) and innovative (refutation compiler). The Devpost criteria are Real World Impact, Quality of the Idea, Technical Implementation, and Product Experience & Demo, so the ticket must stay specific (cold-chain pallet), not abstract.
 
 ## 4. Constraints from CALL-E
 

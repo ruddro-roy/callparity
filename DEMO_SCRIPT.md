@@ -65,4 +65,42 @@
 **Do:** Show the terminal: `docker compose up -d --build`, then `pytest -q` green.
 
 **Say:**
-"One compose command boots it, 99 tests cover it. The refutation planner is merged into awesome-phone-call-agents as ClaimKill, PR 220. The live adapter has placed a real CALL-E call where a person answered and gave a closing time; the FR-1842 graph you saw runs on fixtures until two consenting parties are on the line."
+"One compose command boots it, 165 tests cover it. The refutation planner is merged into awesome-phone-call-agents as ClaimKill, PR 220. The live adapter has placed a real CALL-E call where a person answered and gave a closing time; the FR-1842 graph you saw runs on fixtures until two consenting parties are on the line."
+
+---
+
+## Optional +60 seconds, production proof (when someone asks "is this real?")
+
+This beat is for a judge or a CALL-E engineer who wants proof the engineering
+survives contact with production. Every command below is copy-pasteable and
+was run before it was written down.
+
+**Do:** In a terminal at the repo root with the local venv active (README
+local quickstart), run the one-shot proof. It boots a throwaway API on port
+8123, never touches the compose demo, and cleans up after itself:
+
+    bash scripts/production_proof.sh
+
+**Say (while the crash section prints):**
+"Mid-parity I kill dash nine the API process. The job row is frozen at running in the database. One reboot later that same job reads failed with an operator-facing error, the ticket is free, and a deliberate retry completes with the same restage-and-recall card. Nothing redials on its own; in live mode that would call humans back."
+
+**Point at:** the `429 retry_after=60` lines in the rate-limit section.
+
+**Say:**
+"Every mutating route shares a per-operator budget, and a flood without a valid token is metered by client IP before the 401. Spam gets throttled; the real operator keeps their budget."
+
+**Then, against the running compose stack:**
+
+    curl -s http://localhost:8000/metrics
+
+**Say:**
+"Observable like a production service: requests by status class, jobs by terminal status. Counts only, nothing sensitive."
+
+**Optional, same stack — walk the default rate limit (60 per minute) into a 429:**
+
+    for i in $(seq 1 61); do curl -s -o /dev/null -w '%{http_code}\n' -X POST \
+      http://localhost:8000/v1/tickets/FR-1842/preview \
+      -H "Authorization: Bearer ${OPERATOR_TOKEN:-callparity-demo-operator}"; done | uniq -c
+
+Expect sixty 200s and one 429. The Retry-After header on the denied request
+says when the budget returns.
