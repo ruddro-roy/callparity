@@ -8,28 +8,44 @@ The seed that judges see: ticket **FR-1842**, pallet **PL-9F21**, $18,000/hour c
 
 ![CallParity workbench after the FR-1842 fixture run](demo/workbench-fr1842.png)
 
-Deploying this for real? [docs/OPERATIONS.md](docs/OPERATIONS.md) is the operator reference: every environment variable, the migration story, endpoint auth and rate limits, observability, crash recovery, and the security posture.
+## See it in 90 seconds
+
+    cp .env.example .env
+    docker compose up -d --build
+
+- Workbench: http://localhost:3000
+- Health: http://localhost:8000/healthz. Readiness: http://localhost:8000/readyz (200 when the DB answers, else 503). Metrics: http://localhost:8000/metrics
+- Seeded tickets: **FR-1842** (contradiction), **FR-1900** (control / CONFIRMED), **FR-1888** (Party B voicemail / UNREACHABLE)
+
+`USE_FIXTURES=true` is the default. Click Preview then Run parity on FR-1842. Expect pallet_staged CONTRADICTED, driver_arrived CONFIRMED, seal_recorded UNTESTED, action RESTAGE_AND_RECALL. DEMO_SCRIPT.md narrates the 90 seconds, plus an optional 60-second production-proof beat.
+
+`preview`, `parity`, and `import` require an operator token: `Authorization: Bearer $OPERATOR_TOKEN`. `healthz` and `readyz` stay public. Compose sets a documented demo token (`OPERATOR_TOKEN=callparity-demo-operator` in `.env.example`) and the workbench build bakes the same value, so the browser demo works out of the box. Replace the token for any real deployment. `OPERATOR_TOKEN` also accepts several comma-separated tokens so a rotation can overlap the old and new credential with zero downtime; each token keeps its own audit fingerprint and rate bucket, and a value with an empty segment refuses to boot.
+
+If Docker is not installed, use the local path below.
+
+## Built like production, not a demo
+
+Each line is a behavior you can run, with the test or drill that proves it:
+
+- **A crash cannot wedge a ticket.** `kill -9` the API mid-parity; on reboot the orphaned job converges to failed with a clear operator-facing error and its idempotency key is released for a deliberate retry. Nothing auto-redials. `tests/test_job_reconciliation.py`, live drill in `scripts/production_proof.sh`.
+- **Schema migrations converge from any start state and survive racing replicas.** Empty database, pre-Alembic volume, or already-versioned: all reach head, serialized under a Postgres advisory lock; a partial schema is refused, not guessed at. `tests/test_migrations.py`, proven with four concurrent migrator processes on Postgres 16.
+- **Mutating routes are rate limited before auth is revealed.** One budget per operator-token fingerprint; unauthenticated and forged-token floods are metered by client IP into 429 + Retry-After instead of unmetered 401s. `tests/test_rate_limit.py`.
+- **Operator token rotation with zero downtime.** Comma-separated tokens overlap old and new; each keeps its own audit fingerprint; malformed values refuse to boot. `tests/test_token_rotation.py`.
+- **Every request is traceable and no phone number reaches a log.** `X-Request-ID` on every response (500s included), one JSON access line per request, and E.164 redaction fuzzed with Hypothesis property tests. `tests/test_request_id.py`, `tests/test_redaction_properties.py`.
+- **Observable in production terms.** `GET /metrics` serves Prometheus text: requests by status class, jobs by terminal status, counts only. `tests/test_metrics.py`.
+- **165 offline tests and lint gate every PR**; CI never receives live credentials, so no pipeline can dial. [docs/OPERATIONS.md](docs/OPERATIONS.md) is the operator reference: every environment variable, endpoint auth, migrations, observability, crash recovery, security posture.
+
+## Adoption path (for a CALL-E engineer)
+
+To run this against the live Calls API: set `USE_FIXTURES=false`, `CALLE_BASE_URL`, and `CALLE_API_TOKEN`; replace `OPERATOR_TOKEN`; optionally set `CALLE_WEBHOOK_SECRET` to require HMAC-signed webhooks. Postgres is migrated at boot. Full table in [docs/OPERATIONS.md](docs/OPERATIONS.md).
+
+The consent model is enforced, not advisory: parity and import return 403 for any party without stored consent, and the live hours script refuses to dial unless `CALLE_CONSENT=yes` and the destination is E.164. Deliberately fail-closed: the live adapter refuses to plan, run, or poll without both base URL and token; an unset operator token denies every mutating request; a configured webhook secret rejects unsigned posts; silence, voicemail, and low-confidence extraction never confirm. The import path (`POST /v1/tickets/{id}/parity/import`) is GET-only against CALL-E — it merges two call records a human already answered and has no dial branch, so it cannot place a call.
 
 ## Value proposition
 
 Existing phone-agent skills confirm one recipient or schedule one event. They do not compile a second call as a falsification test of the first. Dispatchers stare at two spoken truths and an email thread. CallParity emits one action card (RESTAGE_AND_RECALL, RELEASE_TRUCK, or HOLD_FOR_HUMAN) with quoted transcript spans on every edge.
 
 Same loop for freight, prior-auth, construction materials, or insurance supplements. The reusable piece is the ClaimKill skill, merged into the community list as [CALLE-AI/awesome-phone-call-agents#220](https://github.com/CALLE-AI/awesome-phone-call-agents/pull/220) and mirrored byte-identical in `skills/callparity-claimkill`.
-
-## Quickstart (compose)
-
-    cp .env.example .env
-    docker compose up -d --build
-
-- Workbench: http://localhost:3000
-- Health: http://localhost:8000/healthz. Readiness: http://localhost:8000/readyz (200 when the DB answers, else 503)
-- Seeded tickets: **FR-1842** (contradiction), **FR-1900** (control / CONFIRMED), **FR-1888** (Party B voicemail / UNREACHABLE)
-
-`USE_FIXTURES=true` is the default. Click Preview then Run parity on FR-1842. Expect pallet_staged CONTRADICTED, driver_arrived CONFIRMED, seal_recorded UNTESTED, action RESTAGE_AND_RECALL.
-
-`preview`, `parity`, and `import` require an operator token: `Authorization: Bearer $OPERATOR_TOKEN`. `healthz` and `readyz` stay public. Compose sets a documented demo token (`OPERATOR_TOKEN=callparity-demo-operator` in `.env.example`) and the workbench build bakes the same value, so the browser demo works out of the box. Replace the token for any real deployment. `OPERATOR_TOKEN` also accepts several comma-separated tokens so a rotation can overlap the old and new credential with zero downtime; each token keeps its own audit fingerprint and rate bucket, and a value with an empty segment refuses to boot.
-
-If Docker is not installed, use the local path below.
 
 ## Quickstart (local, no Docker)
 
@@ -78,13 +94,13 @@ The planner also generates the naive recap a follow-up bot would ask ("Can you c
 
 ## How this hits each judging criterion
 
-**Impact (tie-break 1).** Specific $18k/hour cold-chain miss, not an abstract caller. Ops gets a restage/recall card with quoted words. FR-1900 proves the same machinery can release a truck when both sides agree.
+**Real World Impact.** A specific $18k/hour cold-chain miss, not an abstract caller. Ops gets a restage/recall card with quoted words. FR-1900 proves the same machinery can release a truck when both sides agree. The adoption path above is what "worth building further" looks like: env vars, consent model, migrations, and an operations guide already written for the team that would run it.
 
-**Idea (tie-break 2).** Cross-call refutation: hypotheses from A, minimum observable questions for B, disclosure budget, structural leak check. The second call is a test of the first. Merged into awesome-phone-call-agents as [#220](https://github.com/CALLE-AI/awesome-phone-call-agents/pull/220).
+**Quality of the Idea.** Cross-call refutation: hypotheses from A, minimum observable questions for B, disclosure budget, structural leak check. The second call is a test of the first. The reusable piece is merged into awesome-phone-call-agents as [#220](https://github.com/CALLE-AI/awesome-phone-call-agents/pull/220), not pending.
 
-**Implementation (tie-break 3).** FastAPI, Pydantic, fixture + live adapters behind one port, mocked wire-format tests for POST /v1/calls, HMAC-optional webhook (fail closed), a shared operator token on every mutating route, an import audit trail, phone redaction in logs, Alembic for the Postgres schema, authorization-based idempotency, structured JSON logs, SSE phases, 135 tests across planner, merger, idempotency, webhook, live adapter, live-record import, operator token, audit, redaction, migrations, request id, rate limit, operator script, skill, and the e2e demo loop (the compose smoke skips when the stack is down).
+**Technical Implementation.** CALL-E is invoked at runtime, not referenced: fixture and live adapters behind one CallePort, mocked wire-format tests pinning POST /v1/calls, and a real human-answered call on record. Around it: authorization-based idempotency, HMAC-optional webhook (fail closed), operator auth with zero-downtime token rotation, pre-auth rate limiting, an import audit trail, Alembic migrations under a Postgres advisory lock, crash-orphan job reconciliation, request-id tracing, property-fuzzed phone redaction, structured JSON logs, SSE phases, and a /metrics endpoint. 165 offline tests across planner, merger, idempotency, webhook, live adapter, live-record import, operator token, rotation, audit, redaction, migrations, request id, rate limit, job reconciliation, metrics, operator script, skill, and the e2e demo loop (the compose smoke skips when the stack is down).
 
-**Demo (tie-break 4).** One screen: A claims, refute plan with the dropped leak, B claims, action card, merged graph. DEMO_SCRIPT.md walks it in 90 seconds. Fixtures so a busy signal cannot kill the punchline.
+**Product Experience & Demo.** One screen: A claims, refute plan with the dropped leak, B claims, action card, merged graph. DEMO_SCRIPT.md walks it in 90 seconds, and a 60-second production-proof beat (`scripts/production_proof.sh`) answers "is this real" with a live crash-and-converge. Fixtures so a busy signal cannot kill the punchline.
 
 ## Live CALL-E proof
 
@@ -172,8 +188,10 @@ The product ships and demos on fixtures. Import is the live proof path: it merge
     apps/api                     FastAPI engine
     apps/api/alembic             Postgres schema (applied on API startup)
     packages/shared              JSON Schema
+    docs/OPERATIONS.md           Operator reference (env, migrations, auth, observability)
     scripts/seed_demo_data.py
     scripts/live_hours_call.py   One live hours-of-operation call (operator path)
+    scripts/production_proof.sh  Crash convergence, rate limit, and /metrics in one pass
     skills/callparity-claimkill  Skill merged upstream as #220, mirrored byte-identical
     demo/                        Workbench screenshot
     DEMO_SCRIPT.md PITCH_DECK.md SUBMISSION_TEXT.md
@@ -181,3 +199,5 @@ The product ships and demos on fixtures. Import is the live proof path: it merge
 ## Tests
 
     pytest -q
+
+165 tests and one skip (the compose smoke skips when the stack is down), offline, no live credentials.

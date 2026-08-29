@@ -40,7 +40,7 @@ One port, two adapters, one compose file.
 
 Workbench (Vite/React) -> FastAPI (planner, extractor, merger, jobs) -> Redis + Postgres -> CallePort -> FixtureCalle or LiveCalleSdk (plan_call / run_call / get_call_run + HMAC webhook).
 
-Idempotency is derived from ticket + party + claim-set hash, not from the HTTP attempt. Preview compiles both plans and places zero calls.
+Idempotency is derived from ticket + party + claim-set hash, not from the HTTP attempt. Preview compiles both plans and places zero calls. The schema is boot-migrated (Alembic under a Postgres advisory lock) and crash-orphaned jobs reconcile at startup, so replicas can race and processes can die without wedging a ticket.
 
 ## Slide 5 - Competitive Advantage
 
@@ -60,7 +60,7 @@ Moat is the refutation compiler (disclosure budget + set-cover + fail-closed mer
 
 ## Slide 7 - Roadmap
 
-Now (hackathon ship). Fixture-complete FR-1842 / FR-1900 / FR-1888. HMAC-optional webhook. E2E demo loop green. ClaimKill skill merged upstream ([#220](https://github.com/CALLE-AI/awesome-phone-call-agents/pull/220)); one real CALL-E call placed through the live adapter.
+Now (hackathon ship). Fixture-complete FR-1842 / FR-1900 / FR-1888. ClaimKill skill merged upstream ([#220](https://github.com/CALLE-AI/awesome-phone-call-agents/pull/220)); one real CALL-E call placed through the live adapter, and two human-answered calls on the FR-1842 fact pattern merged through the GET-only import path. Hardened like a service, not a demo: boot-migrated schema under an advisory lock, crash-orphan job reconciliation, pre-auth rate limiting, zero-downtime token rotation, request-id tracing, property-fuzzed phone redaction, /metrics, 165 offline tests, and an operations guide (docs/OPERATIONS.md).
 
 Next 30 days. Wire a real CALL-E account (CALLE_API_TOKEN), public webhook, consent-backed numbers. One live freight desk.
 
