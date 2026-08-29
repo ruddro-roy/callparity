@@ -1,0 +1,30 @@
+CallParity v2 narration — synthesis report
+
+Voice:  Brian (nPczCjzI2devNBz1zQrb) — same voice as the v1 narration run so
+        these chunks cut seamlessly against the reused scene_2.mp3 and
+        scene_3.mp3.
+Model:  eleven_multilingual_v2
+Settings: stability 0.5, similarity_boost 0.9, style 0.0, speaker boost on.
+Format: mp3_44100_128 (44.1 kHz, 128 kbps)
+
+File         Duration (s)  Slot fit         Mean volume  Max volume  Speed
+V1.mp3       16.30         16-20s   OK      -24.4 dB     -5.4 dB     1.0
+V1_ext.mp3   16.33         16-20s   OK      -24.5 dB     -5.7 dB     1.0
+V2a.mp3      5.09          6-9s     SHORT   -24.7 dB     -5.4 dB     1.0
+V2b.mp3      8.07          8-11s    OK      -24.2 dB     -5.8 dB     1.0
+V3.mp3       18.21         16-20s   OK      -24.9 dB     -5.1 dB     1.0
+V6.mp3       21.86         20-24s   OK      -24.6 dB     -4.4 dB     1.12
+
+V2a note: six takes at natural speed 1.0 ranged 4.68-5.33 s; Brian reads the
+19 words in about five seconds, so the 6 s floor is unreachable without
+slowing below 1.0 (unproven for this voice) or padding. Best take shipped,
+0.91 s short of the floor. All words present. The chunk sits over the 8 s
+typing window (0:20-0:28), so it simply ends earlier before the phone rings.
+
+V6 note: speed 1.0 ran 25.50 s and 1.08/1.10 takes landed at 24.01/24.19 s,
+so the chunk shipped at 1.12 — the ceiling already proven in-character by the
+v1 run's scene 4.
+
+Durations measured with ffprobe; volumes with ffmpeg volumedetect. Every mean
+volume is inside the previous run's -24 to -25 dB band. No clipping (all
+peaks below 0 dB) and no near-silent output.
