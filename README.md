@@ -6,7 +6,7 @@ CallParity turns a two-sided ops ticket into a test. It places (or fixtures) a C
 
 The seed that judges see: ticket **FR-1842**, pallet **PL-9F21**, $18,000/hour cold-chain SLA. Warehouse says Dock 3. Driver says Dock 3 was empty.
 
-![CallParity workbench after the FR-1842 fixture run](demo/workbench-fr1842.png)
+![CallParity workbench after the FR-1842 fixture run, with the live-import control for the two recorded CALL-E calls](demo/workbench-fr1842.png)
 
 ## See it in 90 seconds
 
@@ -39,7 +39,7 @@ Each line is a behavior you can run, with the test or drill that proves it:
 
 To run this against the live Calls API: set `USE_FIXTURES=false`, `CALLE_BASE_URL`, and `CALLE_API_TOKEN`; replace `OPERATOR_TOKEN`; optionally set `CALLE_WEBHOOK_SECRET` to require HMAC-signed webhooks. Postgres is migrated at boot. Full table in [docs/OPERATIONS.md](docs/OPERATIONS.md).
 
-The consent model is enforced, not advisory: parity and import return 403 for any party without stored consent, and the live hours script refuses to dial unless `CALLE_CONSENT=yes` and the destination is E.164. Deliberately fail-closed: the live adapter refuses to plan, run, or poll without both base URL and token; an unset operator token denies every mutating request; a configured webhook secret rejects unsigned posts; silence, voicemail, and low-confidence extraction never confirm. The import path (`POST /v1/tickets/{id}/parity/import`) is GET-only against CALL-E — it merges two call records a human already answered and has no dial branch, so it cannot place a call.
+The consent model is enforced, not advisory: parity and import return 403 for any party without stored consent, and the live hours script refuses to dial unless `CALLE_CONSENT=yes` and the destination is E.164. Deliberately fail-closed: the live adapter refuses to plan, run, or poll without both base URL and token; an unset operator token denies every mutating request; a configured webhook secret rejects unsigned posts; silence, voicemail, and low-confidence extraction never confirm. The import path (`POST /v1/tickets/{id}/parity/import`) is GET-only against CALL-E. It merges two call records a human already answered and has no dial branch, so it cannot place a call.
 
 ## Value proposition
 
